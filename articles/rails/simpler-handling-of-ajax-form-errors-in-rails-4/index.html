@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta content='IE=edge;chrome=1' http-equiv='X-UA-Compatible'>
+    <meta content='width=device-width, initial-scale=1' name='viewport'>
+    <title>Simpler Handling of AJAX Form Errors in Rails 4</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/articles/feed.xml" />
+    <link href="/stylesheets/all.css" rel="stylesheet" />
+    <script src="/javascripts/all.js"></script>
+  </head>
+  <body>
+    <nav class='navbar navbar-inverse navbar-static-top'>
+      <div class='container'>
+        <div class='navbar-header'>
+          <button aria-controls='navbar' aria-expanded='false' class='navbar-toggle collapsed' data-target='#navbar' data-toggle='collapse' type='button'>
+            <span class='sr-only'>Toggle navigation</span>
+            <span class='icon-bar'></span>
+            <span class='icon-bar'></span>
+            <span class='icon-bar'></span>
+          </button>
+          <a class='navbar-brand' href='/'>Stefan Magnuson</a>
+        </div>
+        <div class='collapse navbar-collapse' id='navbar'>
+          <ul class='nav navbar-nav'>
+            <li class='active'>
+              <a href='/'>Home</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <div class='container'>
+      <h1>Simpler Handling of AJAX Form Errors in Rails 4</h1>
+      <h2>The Problem</h2>
+      
+      <p>With unobtrusive Javascript, converting a form in Rails to use AJAX is as easy as setting <code>remote: true</code>:</p>
+      <pre class="highlight haml"><code><span class="p">=</span> <span class="n">form_for</span> <span class="no">Client</span><span class="p">.</span><span class="nf">new</span><span class="p">,</span> <span class="ss">remote: </span><span class="kp">true</span> <span class="k">do</span> <span class="o">|</span><span class="n">form</span><span class="o">|</span>&#x000A;  <span class="p">=</span> <span class="n">form</span><span class="p">.</span><span class="nf">text_field</span> <span class="ss">:name</span>&#x000A;</code></pre>
+      
+      <p>This will cause our form to submit asynchronously, and expect a Javascript response, which will be executed directly to e.g. update the page appropriately.</p>
+      
+      <p><a href="https://signalvnoise.com/posts/3697-server-generated-javascript-responses">DHH recommends</a> that we design our apps in this manner, where in the Javascript response we re-render the model using its template and use jQuery to update the HTML on the page.</p>
+      
+      <p>This method has the advantage of using the same template for both initial page generation and updates, which if used carefully can result in an easy and unobtrusive way to make your app allow for asynchronous interaction.</p>
+      
+      <p>One downside however is that every page containing a form for this action which uses <code>remote: true</code> must be happy to accept the same Javascript response, i.e. that Javascript needs to make sense in all contexts. We could start to put conditional logic in the Javascript response to handle other cases but this would get unwieldy quickly&ndash;overall it would seem best to only use this approach when the model in question is to always be represented in the same manner, with the same kind of interaction, wherever it appears.</p>
+      
+      <p>Rails was initially extracted from Basecamp and <a href="http://david.heinemeierhansson.com/2012/the-parley-letter.html">DHH generally evaluates new Rails development from the perspective of what it will mean for Basecamp</a>. This pattern of Server-generated Javascript Responses being used to enable remote forms is a pattern that fits Basecamp well. If your app is very similar to Basecamp then not only will this pattern likely serve you well, the rest of Rails will too.</p>
+      
+      <p>In my case, I am currently working on a system that doesn&rsquo;t fit so neatly into the Basecamp mould. In today&rsquo;s example I have a case where on one page I want to show the full form for the creation of a Client object (with around 10 fields), and on another page a minimal form with only 4 fields. Both forms should point to the same <code>create</code> action, which is to be the sole point of Client creation whether we are POSTing data synchronously, using AJAX or communicating via the API.</p>
+      
+      <p>As such, rather than return Javascript (which is the default), I want the <code>create</code> action to return JSON.</p>
+      
+      <p>As <a href="https://signalvnoise.com/posts/3697-server-generated-javascript-responses">DHH notes</a>, there is a duplication of effort when working with JSON in that you write your template once on the server side and then again on the client side. In this case, this decoupling is desirable to allow for greater flexibility of presentation on the client side.</p>
+      
+      <p>This is straightforward to achieve, <strong>with the exception of handling form errors</strong>, which is the topic of this post.</p>
+      
+      <p>By default, when a JSON <code>create</code> request fails to create the entity in question, errors are returned in the form of field/message pairs, e.g.:</p>
+      <pre class="highlight json"><code><span class="p">{</span><span class="nt">"name"</span><span class="p">:[</span><span class="s2">"can't be blank"</span><span class="p">],</span><span class="nt">"year_end"</span><span class="p">:[</span><span class="s2">"can't be blank"</span><span class="p">],</span><span class="nt">"date_of_incorporation"</span><span class="p">:[</span><span class="s2">"can't be blank"</span><span class="p">]}</span><span class="w">&#x000A;</span></code></pre>
+      
+      <p>What I want is for those error messages to be applied to the appropriate form fields automatically, highlighting them in red and with the error message in the right place.</p>
+      
+      <p>I would be happy to discover that this is already catered for in Rails but it appears to be something that developers are generally rolling on their own.</p>
+      
+      <p>In this post I&rsquo;ll present a relatively general way to handle the mapping of JSON errors to input fields for any form in your Rails application that is tied to a model.</p>
+      
+      <h3>A Little Background</h3>
+      
+      <p>Regarding the adding of <code>remote: true</code> to a form, all that this does is to add <code>data-remote=&quot;true&quot;</code> to the form HTML:</p>
+      <pre class="highlight html"><code><span class="nt">&lt;form</span> <span class="na">accept-charset=</span><span class="s">"UTF-8"</span> <span class="na">action=</span><span class="s">"/clients"</span> <span class="na">class=</span><span class="s">"new_client"</span> <span class="na">data-remote=</span><span class="s">"true"</span> <span class="na">id=</span><span class="s">"new_client"</span> <span class="na">method=</span><span class="s">"post"</span><span class="nt">&gt;</span>&#x000A;</code></pre>
+      
+      <p>This in itself doesn&rsquo;t cause a form to submit asynchronously, but this data attribute will cause Rails&rsquo; unobtrusive Javascript to bind to the submit function on page load, and use jQuery to submit the form data using an AJAX request.</p>
+      
+      <p>The unobtrusive part comes naturally from the fact that if Javascript is not available on the client for whatever reason, the form will submit synchronously and your app will return an HTML response instead of Javascript or JSON.</p>
+      
+      <h2>Implementation</h2>
+      
+      <p><em>Note: In this example I am using Bootstrap but the technique will work no matter what framework you use (if any), you will just need to change the CSS classes in the code samples.</em></p>
+      
+      <p>In this example we are creating a Client and the form has four fields. I&rsquo;m using an alternative form helper <a href="https://github.com/bootstrap-ruby/rails-bootstrap-forms">rails-bootstrap-forms</a>. All this does is apply bootstrap CSS classes so everything in this post will work fine with the regular form helper (or others) if you tweak the CSS classes accordingly.</p>
+      
+      <h3>The Form</h3>
+      <pre class="highlight haml"><code><span class="p">=</span> <span class="n">bootstrap_form_for</span> <span class="no">Client</span><span class="p">.</span><span class="nf">new</span><span class="p">,</span> <span class="ss">remote: </span><span class="kp">true</span> <span class="k">do</span> <span class="o">|</span><span class="n">form</span><span class="o">|</span>&#x000A;  <span class="p">=</span> <span class="n">form</span><span class="p">.</span><span class="nf">text_field</span> <span class="ss">:name</span>&#x000A;  <span class="p">=</span> <span class="n">form</span><span class="p">.</span><span class="nf">text_field</span> <span class="ss">:company_registration_no</span><span class="p">,</span> <span class="ss">label: </span><span class="s2">"Company Registration No."</span>&#x000A;  <span class="p">=</span> <span class="n">form</span><span class="p">.</span><span class="nf">date_select</span> <span class="ss">:date_of_incorporation</span><span class="p">,</span> <span class="ss">start_year: </span><span class="mi">1980</span><span class="p">,</span> <span class="ss">end_year: </span><span class="no">Date</span><span class="p">.</span><span class="nf">today</span><span class="p">.</span><span class="nf">year</span><span class="p">,</span> <span class="ss">include_blank: </span><span class="kp">true</span><span class="p">,</span> <span class="ss">default: </span><span class="kp">nil</span><span class="p">,</span> <span class="ss">label: </span><span class="s2">"Date of Incorporation"</span>&#x000A;  <span class="p">=</span> <span class="n">form</span><span class="p">.</span><span class="nf">date_select</span> <span class="ss">:year_end</span><span class="p">,</span> <span class="ss">order: </span><span class="p">[</span> <span class="ss">:day</span><span class="p">,</span> <span class="ss">:month</span> <span class="p">],</span> <span class="ss">include_blank: </span><span class="kp">true</span><span class="p">,</span> <span class="ss">default: </span><span class="kp">nil</span>&#x000A;&#x000A;  <span class="p">=</span> <span class="n">form</span><span class="p">.</span><span class="nf">submit</span>&#x000A;</code></pre>
+      
+      <h3>The Controller</h3>
+      
+      <p>The form is set to POST (asynchronously or otherwise) to the ClientsController which is a standard scaffold/REST controller. The <code>create</code> action is largely unchanged from when it was generated:</p>
+      <pre class="highlight ruby"><code><span class="c1"># POST /clients</span>&#x000A;<span class="c1"># POST /clients.json</span>&#x000A;<span class="k">def</span> <span class="nf">create</span>&#x000A;  <span class="vi">@client</span> <span class="o">=</span> <span class="no">Client</span><span class="p">.</span><span class="nf">new</span><span class="p">(</span><span class="n">client_params</span><span class="p">)</span>&#x000A;&#x000A;  <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>&#x000A;    <span class="k">if</span> <span class="vi">@client</span><span class="p">.</span><span class="nf">save</span>&#x000A;      <span class="nb">format</span><span class="p">.</span><span class="nf">html</span> <span class="p">{</span> <span class="n">redirect_to</span> <span class="n">clients_path</span><span class="p">,</span> <span class="ss">notice: </span><span class="s1">'Client was successfully created.'</span> <span class="p">}</span>&#x000A;      <span class="nb">format</span><span class="p">.</span><span class="nf">json</span>&#x000A;    <span class="k">else</span>&#x000A;      <span class="nb">format</span><span class="p">.</span><span class="nf">html</span> <span class="p">{</span> <span class="n">render</span> <span class="ss">action: </span><span class="s1">'new'</span> <span class="p">}</span>&#x000A;      <span class="nb">format</span><span class="p">.</span><span class="nf">json</span> <span class="p">{</span> <span class="n">render</span> <span class="ss">json: </span><span class="vi">@client</span><span class="p">.</span><span class="nf">errors</span><span class="p">,</span> <span class="ss">status: :unprocessable_entity</span> <span class="p">}</span>&#x000A;    <span class="k">end</span>&#x000A;  <span class="k">end</span>&#x000A;<span class="k">end</span>&#x000A;</code></pre>
+      
+      <p>When the client can be saved successfully it returns the new client&rsquo;s details as JSON, rendered by <code>app/views/clients/create.json.jbuilder</code>:</p>
+      <pre class="highlight ruby"><code><span class="n">json</span><span class="p">.</span><span class="nf">id</span> <span class="vi">@client</span><span class="p">.</span><span class="nf">id</span>&#x000A;<span class="n">json</span><span class="p">.</span><span class="nf">name</span> <span class="vi">@client</span><span class="p">.</span><span class="nf">name</span>&#x000A;</code></pre>
+      
+      <p>When the client fails validation and cannot be saved, the errors are returned as JSON, e.g.</p>
+      <pre class="highlight json"><code><span class="p">{</span><span class="nt">"name"</span><span class="p">:[</span><span class="s2">"can't be blank"</span><span class="p">],</span><span class="nt">"year_end"</span><span class="p">:[</span><span class="s2">"can't be blank"</span><span class="p">],</span><span class="nt">"date_of_incorporation"</span><span class="p">:[</span><span class="s2">"can't be blank"</span><span class="p">]}</span><span class="w">&#x000A;</span></code></pre>
+      
+      <h3>Validation</h3>
+      
+      <p>We have the form which is ready to be submitted asynchronously, and the controller is ready to return JSON, but the default behaviour in Rails AJAX requests is to ask for a JS (Javascript) response. So, we reconfigure all AJAX requests to request JSON instead, as in this application this is what we always want by default:</p>
+      <pre class="highlight coffeescript"><code><span class="c1"># Default to JSON responses for remote calls&#x000A;</span><span class="nx">$</span><span class="p">.</span><span class="na">ajaxSetup</span><span class="p">({</span>&#x000A;  <span class="na">dataType</span><span class="o">:</span> <span class="s">'json'</span>&#x000A;<span class="p">})</span>&#x000A;</code></pre>
+      
+      <p>Finally, we hook into the AJAX request cycle and specify behaviour for when the Client is created successfully (append it to a list on the page) and for when validation fails (render the errors in the form):</p>
+      <pre class="highlight coffeescript"><code><span class="c1"># New Client&#x000A;</span><span class="nx">$</span><span class="p">(</span><span class="s">"#new_client"</span><span class="p">).</span><span class="na">on</span><span class="p">(</span><span class="s">"ajax:success"</span><span class="p">,</span> <span class="p">(</span><span class="nx">e</span><span class="p">,</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">status</span><span class="p">,</span> <span class="nx">xhr</span><span class="p">)</span> <span class="o">-&gt;</span>&#x000A;  <span class="nx">$</span><span class="p">(</span><span class="s">"#clients"</span><span class="p">).</span><span class="na">append</span><span class="p">(</span><span class="s">"&lt;li&gt;"</span> <span class="o">+</span> <span class="nx">data</span><span class="p">[</span><span class="s">'name'</span><span class="p">]</span> <span class="o">+</span> <span class="s">"&lt;/li&gt;"</span><span class="p">)</span>&#x000A;  <span class="nx">$</span><span class="p">(</span><span class="s">"#clients"</span><span class="p">).</span><span class="na">effect</span><span class="p">(</span><span class="s">"highlight"</span><span class="p">)</span>&#x000A;<span class="p">).</span><span class="na">on</span><span class="p">(</span><span class="s">"ajax:error"</span><span class="p">,</span> <span class="p">(</span><span class="nx">e</span><span class="p">,</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">status</span><span class="p">,</span> <span class="nx">xhr</span><span class="p">)</span> <span class="o">-&gt;</span>&#x000A;  <span class="nx">$</span><span class="p">(</span><span class="s">"#step-clients form"</span><span class="p">).</span><span class="na">render_form_errors</span><span class="p">(</span><span class="s">'client'</span><span class="p">,</span> <span class="nx">data</span><span class="p">.</span><span class="na">responseJSON</span><span class="p">)</span>&#x000A;<span class="p">)</span>&#x000A;</code></pre>
+      
+      <p>The crucial part here, which appears to not be provided by Rails, is this <code>render_form_errors</code> function. Here is my naïve implementation which looks for form elements with a <code>name</code> that <em>starts with</em> the field name provided in the errors hash:</p>
+      <pre class="highlight coffeescript"><code><span class="nx">$</span><span class="p">.</span><span class="na">fn</span><span class="p">.</span><span class="na">render_form_errors</span> <span class="o">=</span> <span class="p">(</span><span class="nx">model_name</span><span class="p">,</span> <span class="nx">errors</span><span class="p">)</span> <span class="o">-&gt;</span>&#x000A;  <span class="nx">form</span> <span class="o">=</span> <span class="k">this</span>&#x000A;  <span class="k">this</span><span class="p">.</span><span class="na">clear_form_errors</span><span class="p">()</span>&#x000A;&#x000A;  <span class="nx">$</span><span class="p">.</span><span class="na">each</span><span class="p">(</span><span class="nx">errors</span><span class="p">,</span> <span class="p">(</span><span class="nx">field</span><span class="p">,</span> <span class="nx">messages</span><span class="p">)</span> <span class="o">-&gt;</span>&#x000A;    <span class="nx">input</span> <span class="o">=</span> <span class="nx">form</span><span class="p">.</span><span class="na">find</span><span class="p">(</span><span class="s">'input, select, textarea'</span><span class="p">).</span><span class="na">filter</span><span class="p">(</span><span class="o">-&gt;</span>&#x000A;      <span class="nx">name</span> <span class="o">=</span> <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="na">attr</span><span class="p">(</span><span class="s">'name'</span><span class="p">)</span>&#x000A;      <span class="k">if</span> <span class="nx">name</span>&#x000A;        <span class="nx">name</span><span class="p">.</span><span class="na">match</span><span class="p">(</span><span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="nx">model_name</span> <span class="o">+</span> <span class="s">'</span><span class="se">\\</span><span class="s">['</span> <span class="o">+</span> <span class="nx">field</span> <span class="o">+</span> <span class="s">'</span><span class="se">\\</span><span class="s">(?'</span><span class="p">))</span>&#x000A;    <span class="p">)</span>&#x000A;    <span class="nx">input</span><span class="p">.</span><span class="na">closest</span><span class="p">(</span><span class="s">'.form-group'</span><span class="p">).</span><span class="na">addClass</span><span class="p">(</span><span class="s">'has-error'</span><span class="p">)</span>&#x000A;    <span class="nx">input</span><span class="p">.</span><span class="na">parent</span><span class="p">().</span><span class="na">append</span><span class="p">(</span><span class="s">'&lt;span class="help-block"&gt;'</span> <span class="o">+</span> <span class="nx">$</span><span class="p">.</span><span class="na">map</span><span class="p">(</span><span class="nx">messages</span><span class="p">,</span> <span class="p">(</span><span class="nx">m</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">m</span><span class="p">.</span><span class="na">charAt</span><span class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="na">toUpperCase</span><span class="p">()</span> <span class="o">+</span> <span class="nx">m</span><span class="p">.</span><span class="na">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">)).</span><span class="na">join</span><span class="p">(</span><span class="s">'&lt;br /&gt;'</span><span class="p">)</span> <span class="o">+</span> <span class="s">'&lt;/span&gt;'</span><span class="p">)</span>&#x000A;  <span class="p">)</span>&#x000A;</code></pre>
+      
+      <p>Scoping the search to the form in question, we look for <strong>any element</strong> with a <code>name</code> that starts with the given field name. For example for the &ldquo;year end&rdquo; field, its HTML representation is:</p>
+      <pre class="highlight html"><code><span class="nt">&lt;input</span> <span class="na">id=</span><span class="s">"client_year_end_1i"</span> <span class="na">name=</span><span class="s">"client[year_end(1i)]"</span> <span class="na">type=</span><span class="s">"hidden"</span> <span class="na">value=</span><span class="s">"1"</span><span class="nt">&gt;</span>&#x000A;</code></pre>
+      
+      <p>We can&rsquo;t match it exactly as it is suffixed with <code>(1i)</code> due to it being composed of multiple select drop downs. Instead, this function will look for any form elements with a name that matches the regex <code>/client\[year_end\(?/</code> which matches strings like <code>&quot;client[year_end]&quot;</code> or in this case <code>&quot;client[year_end(1i)]&quot;</code>.</p>
+      
+      <p>Importantly, it <strong>does not</strong> match strings like <code>&quot;client[year_end_another_field_name]&quot;</code> as this would cause errors for certain fields to find their way on to the elements of other fields where the names share a common beginning.</p>
+      
+      <h3>Resetting Forms</h3>
+      
+      <p>We define two more helper functions that will be used when working with remote forms, one to clear all errors from the form and the other to clear all form data (which we might do when we successfully save a Client):</p>
+      <pre class="highlight coffeescript"><code><span class="nx">$</span><span class="p">.</span><span class="na">fn</span><span class="p">.</span><span class="na">clear_form_errors</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span>&#x000A;  <span class="k">this</span><span class="p">.</span><span class="na">find</span><span class="p">(</span><span class="s">'.form-group'</span><span class="p">).</span><span class="na">removeClass</span><span class="p">(</span><span class="s">'has-error'</span><span class="p">)</span>&#x000A;  <span class="k">this</span><span class="p">.</span><span class="na">find</span><span class="p">(</span><span class="s">'span.help-block'</span><span class="p">).</span><span class="na">remove</span><span class="p">()</span>&#x000A;&#x000A;<span class="nx">$</span><span class="p">.</span><span class="na">fn</span><span class="p">.</span><span class="na">clear_form_fields</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span>&#x000A;  <span class="k">this</span><span class="p">.</span><span class="na">find</span><span class="p">(</span><span class="s">':input'</span><span class="p">,</span><span class="s">'#myform'</span><span class="p">)</span>&#x000A;      <span class="p">.</span><span class="na">not</span><span class="p">(</span><span class="s">':button, :submit, :reset, :hidden'</span><span class="p">)</span>&#x000A;      <span class="p">.</span><span class="na">val</span><span class="p">(</span><span class="s">''</span><span class="p">)</span>&#x000A;      <span class="p">.</span><span class="na">removeAttr</span><span class="p">(</span><span class="s">'checked'</span><span class="p">)</span>&#x000A;      <span class="p">.</span><span class="na">removeAttr</span><span class="p">(</span><span class="s">'selected'</span><span class="p">)</span>&#x000A;</code></pre>
+      
+      <h2>Wrapping Up</h2>
+      
+      <p>With the above we now have a fairly general implementation of remote forms for our app where to fully handle validation we only need to call one helper method.</p>
+      
+      <p>In doing so we have left the controller largely untouched, and thanks to a custom form helper and Bootstrap we need need do very little to have all controls appear as they should when we need to show an error.</p>
+      
+      <p>Here&rsquo;s what the result looks like when we click submit on an empty form, thus triggering validation errors:</p>
+      
+      <p><img src="http://stefan.haflidason.com/assets/2014/08/Screen-Shot-2014-08-18-at-16.42.21.png" alt="Bootrap Rails Form Validation" width="491" height="444" class="aligncenter size-full wp-image-784" /></p>
+      
+      <p>If you have any questions or suggestions for improvement you can <a href="https://twitter.com/styrmis">drop me a line on Twitter</a>.</p>
+      <hr>
+      <div class='text-center'>
+        <p>Did you find this post useful? If you would like help with anything then you can contact me any time via <a href="https://twitter.com/stymis" target="_blank">Twitter</a>.</p>
+        <br>
+        <br>
+      </div>
+    </div>
+  </body>
+</html>

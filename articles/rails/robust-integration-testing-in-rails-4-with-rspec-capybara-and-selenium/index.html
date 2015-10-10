@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta content='IE=edge;chrome=1' http-equiv='X-UA-Compatible'>
+    <meta content='width=device-width, initial-scale=1' name='viewport'>
+    <title>Robust Integration Testing in Rails 4 with RSpec, Capybara and Selenium</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/articles/feed.xml" />
+    <link href="/stylesheets/all.css" rel="stylesheet" />
+    <script src="/javascripts/all.js"></script>
+  </head>
+  <body>
+    <nav class='navbar navbar-inverse navbar-static-top'>
+      <div class='container'>
+        <div class='navbar-header'>
+          <button aria-controls='navbar' aria-expanded='false' class='navbar-toggle collapsed' data-target='#navbar' data-toggle='collapse' type='button'>
+            <span class='sr-only'>Toggle navigation</span>
+            <span class='icon-bar'></span>
+            <span class='icon-bar'></span>
+            <span class='icon-bar'></span>
+          </button>
+          <a class='navbar-brand' href='/'>Stefan Magnuson</a>
+        </div>
+        <div class='collapse navbar-collapse' id='navbar'>
+          <ul class='nav navbar-nav'>
+            <li class='active'>
+              <a href='/'>Home</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <div class='container'>
+      <h1>Robust Integration Testing in Rails 4 with RSpec, Capybara and Selenium</h1>
+      <h2>The Problem</h2>
+      
+      <p>Using RSpec and Capybara to test your Rails apps can make writing tests easier
+      which is good both from a perspective of getting people to actually write tests
+      but also for our general productivity as developers.</p>
+      
+      <p>While it has its detractors, I like the terse syntax and ease with which we can
+      define our own helpers which help set up certain contexts such as in this case
+      setting up the default account and switching into its subdomain:</p>
+      <pre class="highlight ruby"><code><span class="n">feature</span> <span class="s2">"Onboarding"</span><span class="p">,</span> <span class="ss">:js</span> <span class="k">do</span>&#x000A;  <span class="n">with_default_account</span> <span class="k">do</span>&#x000A;    <span class="n">within_account_subdomain</span> <span class="k">do</span>&#x000A;      <span class="n">before</span> <span class="p">{</span>&#x000A;        <span class="no">Service</span><span class="p">.</span><span class="nf">create_default_services</span>&#x000A;      <span class="p">}</span>&#x000A;&#x000A;      <span class="n">scenario</span> <span class="s2">"User can complete onboarding process"</span> <span class="k">do</span>&#x000A;        <span class="n">visit</span> <span class="n">dashboard_path</span>&#x000A;&#x000A;        <span class="c1"># User is redirected</span>&#x000A;        <span class="n">expect</span><span class="p">(</span><span class="n">page</span><span class="p">.</span><span class="nf">current_path</span><span class="p">).</span><span class="nf">to</span> <span class="n">eql</span><span class="p">(</span><span class="n">getting_started_path</span><span class="p">)</span>&#x000A;&#x000A;        <span class="n">fill_in</span> <span class="s2">"Name"</span><span class="p">,</span> <span class="ss">with: </span><span class="s2">"New Service XYZ"</span>&#x000A;        <span class="n">click_button</span> <span class="s2">"Create Service"</span>&#x000A;&#x000A;        <span class="c1"># ...</span>&#x000A;      <span class="k">end</span>&#x000A;    <span class="k">end</span>&#x000A;  <span class="k">end</span>&#x000A;<span class="k">end</span>&#x000A;</code></pre>
+      
+      <p>Those helpers can be used in any test, which eliminates repeated setup code
+      between test cases. Then from Capybara we get a simple but powerful DSL which
+      lets us <code>visit</code> pages, <code>fill_in</code> forms and interact as if we were a user
+      (<code>click_button</code>, <code>click_link</code>). This is an attractive mix and it isn&rsquo;t hard to
+      see why this has caught on.</p>
+      
+      <p>The testing setup that ships with Rails is also perfectly capable but generally
+      I prefer this syntax and workflow. One great advantage that the standard testing
+      setup (using <code>Test::Unit</code>) has over RSpec however is <strong>support</strong>&ndash;quite simply
+      when you write your tests using <code>Test::Unit</code> and the default Rails helpers you
+      will be in good company and can expect minimum fuss. As the Rails core team
+      advance the test harness then you can also benefit from out-of-the-box
+      improvements like Spring, which will cut app startup time out of the test
+      running equation.</p>
+      
+      <p>When you move to RSpec however, and start mixing in things like Capybara,
+      FactoryGirl (for fixtures) and Selenium then you are entering potentially
+      uncharted territory, in particular because your app may have something unusual
+      about it that causes your tests to fail, perhaps mysteriously.</p>
+      
+      <p>One way to look at the argument between the two approaches is that if you work
+      with Rails on a contract/consulting basis then having familiarity with both is
+      going to be advantageous&ndash;if you work only on your own projects then the choice
+      is entirely up to you.</p>
+      
+      <p>In this post I&rsquo;m going to step through the several roadblocks that I have
+      encountered in setting up the above tools such that they all work together
+      correctly and reliably. In doing so I will attempt to keep the setup as simple
+      as possible, and minimise the use of blunt instruments like <code>database_cleaner</code>&rsquo;s
+      truncation strategy.</p>
+      
+      <p><em>Note: Given how many moving parts there are here (the majority from 3rd
+      parties), for future projects I will be experimenting with sticking to the stock
+      Rails test framework to measure approximately the difference in productivity.
+      The tests may (or may not!) take longer to write, but I would expect some gains
+      from the reduction in lost time due to needing to fix the test harness.</em></p>
+      
+      <p>An additional complication that I have is that I am testing a subdomain-based
+      multi-tenant system&ndash;this is something that is not well documented when it comes
+      to RSpec and particularly Capybara so if you are in a similar situation then the
+      following should hopefully be of use to you.</p>
+      
+      <p>The roadblocks I have hit are:</p>
+      
+      <ul>
+      <li>Database inconsistencies when running a mix of plain and Javascript/Selenium
+      tests.</li>
+      <li>Assets (CSS/JS) not being served in Selenium tests.</li>
+      <li>The requesting of assets causing RSpec/Capybara to hang, with no hint as to
+      what is wrong.</li>
+      </ul>
+      
+      <p>The setup:</p>
+      
+      <ul>
+      <li>rspec-rails 2.14.2</li>
+      <li>capybara 2.4.1</li>
+      <li>selenium-webdriver 2.42.0</li>
+      <li>factory<em>girl</em>rails 4.4.1</li>
+      <li>database_cleaner 1.3.0</li>
+      </ul>
+      
+      <p>The characteristics that we want the setup to have:</p>
+      
+      <ul>
+      <li>Running a test in a real browser should be as simple as specifying <code>:js</code> for
+      a feature or scenario.</li>
+      <li>Tests should pass/fail reliably, not sporadically, i.e. there should be no
+      race conditions.</li>
+      <li>All tests will be carried out using a single tenant&ndash;we are testing the
+      application functionality; the multi-tenant aspect of the system will be
+      handled by a completely separate set of tests as mixing the two in one suite is
+      more trouble than it&rsquo;s worth.</li>
+      </ul>
+      
+      <h2>The Solution</h2>
+      
+      <h3>Gemfile</h3>
+      <pre class="highlight ruby"><code><span class="n">group</span> <span class="ss">:development</span><span class="p">,</span> <span class="ss">:test</span> <span class="k">do</span>&#x000A;  <span class="n">gem</span> <span class="s1">'rspec-rails'</span><span class="p">,</span> <span class="s1">'2.14.2'</span>&#x000A;  <span class="n">gem</span> <span class="s1">'capybara'</span><span class="p">,</span> <span class="s1">'2.4.1'</span>&#x000A;  <span class="n">gem</span> <span class="s1">'selenium-webdriver'</span>&#x000A;  <span class="n">gem</span> <span class="s1">'factory_girl_rails'</span><span class="p">,</span> <span class="s1">'~&gt; 4.0'</span>&#x000A;  <span class="n">gem</span> <span class="s1">'database_cleaner'</span><span class="p">,</span> <span class="s1">'1.3.0'</span>&#x000A;<span class="k">end</span>&#x000A;</code></pre>
+      
+      <h3>Spec Helper</h3>
+      
+      <p>Here is a full spec helper file (which should live in <code>spec/spec_helper.rb</code>); I
+      would recommend reading the comments and incorporating the settings as
+      appropriate (i.e. don&rsquo;t copy and paste this whole file into your project):</p>
+      <pre class="highlight ruby"><code><span class="c1"># This file is copied to spec/ when you run 'rails generate rspec:install'</span>&#x000A;<span class="no">ENV</span><span class="p">[</span><span class="s2">"RAILS_ENV"</span><span class="p">]</span> <span class="o">||=</span> <span class="s1">'test'</span>&#x000A;<span class="nb">require</span> <span class="no">File</span><span class="p">.</span><span class="nf">expand_path</span><span class="p">(</span><span class="s2">"../../config/environment"</span><span class="p">,</span> <span class="kp">__FILE__</span><span class="p">)</span>&#x000A;<span class="nb">require</span> <span class="s1">'rspec/rails'</span>&#x000A;<span class="nb">require</span> <span class="s1">'rspec/autorun'</span>&#x000A;<span class="nb">require</span> <span class="s1">'capybara'</span>&#x000A;&#x000A;<span class="c1"># Requires supporting ruby files with custom matchers and macros, etc,</span>&#x000A;<span class="c1"># in spec/support/ and its subdirectories.</span>&#x000A;<span class="no">Dir</span><span class="p">[</span><span class="no">Rails</span><span class="p">.</span><span class="nf">root</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="s2">"spec/support/**/*.rb"</span><span class="p">)].</span><span class="nf">each</span> <span class="p">{</span> <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="nb">require</span> <span class="n">f</span> <span class="p">}</span>&#x000A;&#x000A;<span class="c1"># Checks for pending migrations before tests are run.</span>&#x000A;<span class="c1"># If you are not using ActiveRecord, you can remove this line.</span>&#x000A;<span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Migration</span><span class="p">.</span><span class="nf">check_pending!</span> <span class="k">if</span> <span class="n">defined?</span><span class="p">(</span><span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Migration</span><span class="p">)</span>&#x000A;&#x000A;<span class="no">RSpec</span><span class="p">.</span><span class="nf">configure</span> <span class="k">do</span> <span class="o">|</span><span class="n">config</span><span class="o">|</span>&#x000A;  <span class="c1"># Remove this when upgrading to RSpec 3</span>&#x000A;  <span class="c1"># Allows us to write just `:js` instead of `js: true` in tests</span>&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">treat_symbols_as_metadata_keys_with_true_values</span> <span class="o">=</span> <span class="kp">true</span>&#x000A;&#x000A;  <span class="c1"># Remove this line if you're not using ActiveRecord or ActiveRecord</span>&#x000A;<span class="n">fixtures</span>&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">fixture_path</span> <span class="o">=</span> <span class="s2">"</span><span class="si">#{</span><span class="o">::</span><span class="no">Rails</span><span class="p">.</span><span class="nf">root</span><span class="si">}</span><span class="s2">/spec/fixtures"</span>&#x000A;&#x000A;  <span class="c1"># If you're not using ActiveRecord, or you'd prefer not to run each of</span>&#x000A;<span class="n">your</span>&#x000A;  <span class="c1"># database_cleaner below</span>&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">use_transactional_fixtures</span> <span class="o">=</span> <span class="kp">false</span>&#x000A;&#x000A;  <span class="c1"># If true, the base class of anonymous controllers will be inferred</span>&#x000A;  <span class="c1"># automatically. This will be the default behavior in future versions of</span>&#x000A;  <span class="c1"># rspec-rails.</span>&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">infer_base_class_for_anonymous_controllers</span> <span class="o">=</span> <span class="kp">false</span>&#x000A;&#x000A;  <span class="c1"># Run specs in random order to surface order dependencies. If you find an</span>&#x000A;  <span class="c1"># order dependency and want to debug it, you can fix the order by</span>&#x000A;<span class="n">providing</span>&#x000A;  <span class="c1"># the seed, which is printed after each run.</span>&#x000A;  <span class="c1">#     --seed 1234</span>&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">order</span> <span class="o">=</span> <span class="s2">"random"</span>&#x000A;&#x000A;  <span class="c1"># Insist on 'expect' syntax rather than 'should'</span>&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">expect_with</span> <span class="ss">:rspec</span> <span class="k">do</span> <span class="o">|</span><span class="n">c</span><span class="o">|</span>&#x000A;    <span class="n">c</span><span class="p">.</span><span class="nf">syntax</span> <span class="o">=</span> <span class="ss">:expect</span>&#x000A;  <span class="k">end</span>&#x000A;&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">before</span><span class="p">(</span><span class="ss">:suite</span><span class="p">)</span> <span class="k">do</span>&#x000A;    <span class="c1"># First, in case the database contains data from a previous run (e.g.</span>&#x000A;    <span class="c1"># from a run that crashed), run a full clean using the truncation</span>&#x000A;    <span class="c1"># strategy.</span>&#x000A;    <span class="no">DatabaseCleaner</span><span class="p">.</span><span class="nf">clean_with</span><span class="p">(</span><span class="ss">:truncation</span><span class="p">)</span>&#x000A;&#x000A;    <span class="c1"># *** The following is specific to this project</span>&#x000A;    <span class="c1">#     Here we set up the default tenant to be used in each test</span>&#x000A;&#x000A;    <span class="c1"># Drop the default tenant if it exists</span>&#x000A;    <span class="no">Apartment</span><span class="o">::</span><span class="no">Database</span><span class="p">.</span><span class="nf">drop</span><span class="p">(</span><span class="no">PracticeManager</span><span class="o">::</span><span class="no">DEFAULT_TENANT_NAME</span><span class="p">)</span> <span class="k">rescue</span>&#x000A;<span class="kp">nil</span>&#x000A;&#x000A;    <span class="c1"># Create the default tenant</span>&#x000A;    <span class="n">default_account</span> <span class="o">=</span> <span class="no">Subscriptions</span><span class="o">::</span><span class="no">Account</span><span class="p">.</span><span class="nf">create!</span><span class="p">(</span><span class="nb">name</span><span class="ss">:"Test Customer&#x000A;#1"</span><span class="p">,</span> <span class="ss">subdomain: </span><span class="no">PracticeManager</span><span class="o">::</span><span class="no">DEFAULT_TENANT_NAME</span><span class="p">)</span>&#x000A;    <span class="n">default_account</span><span class="p">.</span><span class="nf">create_schema</span>&#x000A;&#x000A;    <span class="n">owner</span> <span class="o">=</span> <span class="no">Subscriptions</span><span class="o">::</span><span class="no">User</span><span class="p">.</span><span class="nf">create!</span><span class="p">(</span><span class="ss">email: </span><span class="s2">"customer@example.com"</span><span class="p">,</span>&#x000A;<span class="ss">password: </span><span class="s2">"password"</span><span class="p">,</span> <span class="ss">password_confirmation: </span><span class="s2">"password"</span><span class="p">)</span>&#x000A;&#x000A;    <span class="n">default_account</span><span class="p">.</span><span class="nf">owner</span> <span class="o">=</span> <span class="n">owner</span>&#x000A;    <span class="n">default_account</span><span class="p">.</span><span class="nf">save!</span>&#x000A;&#x000A;    <span class="n">default_account</span><span class="p">.</span><span class="nf">users</span> <span class="o">&lt;&lt;</span> <span class="n">default_account</span><span class="p">.</span><span class="nf">owner</span>&#x000A;&#x000A;    <span class="c1"># *** End of project-specific portion</span>&#x000A;  <span class="k">end</span>&#x000A;&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">before</span><span class="p">(</span><span class="ss">:each</span><span class="p">)</span> <span class="k">do</span>&#x000A;    <span class="c1"># If the test is a Javascript test, set the strategy to truncation</span>&#x000A;    <span class="c1"># as transactional cleaning will not work due to the test runner</span>&#x000A;    <span class="c1"># and app not sharing the same process when testing from a browser.</span>&#x000A;    <span class="c1"># For non-Javascript tests use the transaction strategy as it is faster.</span>&#x000A;    <span class="k">if</span> <span class="n">example</span><span class="p">.</span><span class="nf">metadata</span><span class="p">[</span><span class="ss">:js</span><span class="p">]</span>&#x000A;      <span class="no">DatabaseCleaner</span><span class="p">.</span><span class="nf">strategy</span> <span class="o">=</span> <span class="ss">:truncation</span>&#x000A;    <span class="k">else</span>&#x000A;      <span class="no">DatabaseCleaner</span><span class="p">.</span><span class="nf">strategy</span> <span class="o">=</span> <span class="ss">:transaction</span>&#x000A;    <span class="k">end</span>&#x000A;&#x000A;    <span class="no">DatabaseCleaner</span><span class="p">.</span><span class="nf">start</span>&#x000A;&#x000A;    <span class="c1"># Before each test, switch into the schema of the default tenant</span>&#x000A;    <span class="no">Apartment</span><span class="o">::</span><span class="no">Database</span><span class="p">.</span><span class="nf">switch</span><span class="p">(</span><span class="no">PracticeManager</span><span class="o">::</span><span class="no">DEFAULT_TENANT_NAME</span><span class="p">)</span>&#x000A;  <span class="k">end</span>&#x000A;&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">after</span><span class="p">(</span><span class="ss">:each</span><span class="p">)</span> <span class="k">do</span> <span class="o">|</span><span class="n">group</span><span class="o">|</span>&#x000A;    <span class="no">DatabaseCleaner</span><span class="p">.</span><span class="nf">clean</span>&#x000A;    <span class="no">Apartment</span><span class="o">::</span><span class="no">Database</span><span class="p">.</span><span class="nf">reset</span>&#x000A;  <span class="k">end</span>&#x000A;&#x000A;  <span class="c1"># Load FactoryGirl helpers</span>&#x000A;  <span class="n">config</span><span class="p">.</span><span class="nf">include</span> <span class="no">FactoryGirl</span><span class="o">::</span><span class="no">Syntax</span><span class="o">::</span><span class="no">Methods</span>&#x000A;<span class="k">end</span>&#x000A;&#x000A;<span class="c1"># Explicitly set the test server process to a particular port</span>&#x000A;<span class="c1"># so that we can access it directly at will.</span>&#x000A;<span class="no">Capybara</span><span class="p">.</span><span class="nf">server_port</span> <span class="o">=</span> <span class="mi">10000</span>&#x000A;&#x000A;<span class="c1"># To ensure that browser tests can find the test server process,</span>&#x000A;<span class="c1"># always include the port number in URLs.</span>&#x000A;<span class="no">Capybara</span><span class="p">.</span><span class="nf">always_include_port</span> <span class="o">=</span> <span class="kp">true</span>&#x000A;&#x000A;<span class="c1"># For all tests except Javascript tests we will use :rack_test</span>&#x000A;<span class="c1"># (the default) as it is the fastest. For Javascript tests we will</span>&#x000A;<span class="c1"># use Selenium as it is the most robust/mature browser driver</span>&#x000A;<span class="c1"># available.</span>&#x000A;<span class="no">Capybara</span><span class="p">.</span><span class="nf">javascript_driver</span> <span class="o">=</span> <span class="ss">:selenium</span>&#x000A;</code></pre>
+      
+      <h4>Database Cleaner</h4>
+      
+      <p>The <code>database_cleaner</code> gem feels intuitively like an unpleasant hack, but with
+      the right configuration it can work in such a way that we only change the test
+      runner behaviour slightly for JS tests.</p>
+      
+      <p>It is well known that once you are using Factory Girl and/or browser testing
+      then you will want to stop using transactional fixtures as they won&rsquo;t work as
+      expected:</p>
+      <pre class="highlight ruby"><code><span class="n">config</span><span class="p">.</span><span class="nf">use_transactional_fixtures</span> <span class="o">=</span> <span class="kp">false</span>&#x000A;</code></pre>
+      
+      <p>Then, when cleaning up after tests it is common to use the cleaner&rsquo;s
+      <code>truncation</code> strategy after browsers tests and the <code>transaction</code> strategy
+      (basically the same as that enabled by <code>config.use_transactional_fixtures</code>) for
+      all other tests.</p>
+      
+      <p>Many tutorials and StackOverflow answers out there have JS and non-JS tests
+      mixed together, with the strategy being switched between <code>transaction</code> and
+      <code>truncation</code> on each test.</p>
+      
+      <p>In my experience this has resulted in database access race conditions that have
+      caused otherwise well-written, independent tests to fail intermittently.</p>
+      
+      <p>The solution I have settled on is to run all non-JS tests first (shuffled), and
+      then all JS tests (also shuffled). This allows for discovery of tests that
+      incorrectly expect certain state, or fail to clean up after themselves (by
+      virtue of the random execution order), while not attempting to freely mix JS and
+      non-JS tests. As these different classes of test have different purposes, I see
+      no disadvantage in this approach, with the exception of it being somewhat
+      non-standard.</p>
+      
+      <p>In RSpec 3 we would be able to provide our own ordering scheme to achieve this,
+      but as we are still on RSpec 2 this needs to be set up outside of the spec
+      helper.</p>
+      
+      <p>First, in <code>.rspec</code> we set the default runner to exclude all Javascript tests:</p>
+      <pre class="highlight plaintext"><code>--color --tag ~js&#x000A;</code></pre>
+      
+      <p><em>(We also colour all output)</em></p>
+      
+      <p>Now when we run <code>rspec</code> in the shell it will run all tests not marked with
+      <code>:js</code>.</p>
+      
+      <p>To run our browser tests, we now need to run <code>rspec --tag js</code>. While this could
+      perhaps be seen as inconvenient, I find this preferable as generally I am not
+      looking to run the (very slow) browser tests unless I am working on a
+      Javascript-based feature, or I am committing code.</p>
+      
+      <p>I have a git pre-commit hook which handles the running of both suites of tests,
+      and only allows the commit to go ahead if both suites pass.</p>
+      
+      <p>In a file symlinked to <code>.git/hooks/pre-commit</code>:</p>
+      <pre class="highlight shell"><code><span class="c">#!/bin/sh</span>&#x000A;&#x000A;<span class="c"># Based on</span>&#x000A;http://codeinthehole.com/writing/tips-for-using-a-git-pre-commit-hook/&#x000A;&#x000A;clean_up_and_exit <span class="o">()</span> <span class="o">{</span>&#x000A;  git stash pop -q&#x000A;  <span class="nb">exit</span> <span class="nv">$1</span>&#x000A;<span class="o">}</span>&#x000A;&#x000A;<span class="c"># Run all tests and ensure that they pass before continuing</span>&#x000A;git stash -q --keep-index&#x000A;&#x000A;rspec --tag ~js&#x000A;<span class="nv">RESULT</span><span class="o">=</span><span class="nv">$?</span>&#x000A;&#x000A;<span class="o">[</span> <span class="nv">$RESULT</span> -ne 0 <span class="o">]</span> <span class="o">&amp;&amp;</span> clean_up_and_exit 1&#x000A;&#x000A;rspec --tag js&#x000A;<span class="nv">JS_RESULT</span><span class="o">=</span><span class="nv">$?</span>&#x000A;&#x000A;<span class="o">[</span> <span class="nv">$JS_RESULT</span> -ne 0 <span class="o">]</span> <span class="o">&amp;&amp;</span> clean_up_and_exit 1&#x000A;&#x000A;<span class="c"># All tests passed</span>&#x000A;clean_up_and_exit 0&#x000A;</code></pre>
+      
+      <p>So in general I&rsquo;ll be running individual test files as I work, and then before
+      committing I will be sure to exercise the whole test suite.</p>
+      
+      <h4>Why Selenium?</h4>
+      
+      <p>Initially I was using the
+      <a href="https://github.com/thoughtbot/capybara-webkit">capybara-webkit</a> gem to allow
+      for headless testing but unfortunately ran into some sporadic errors/hangs which
+      were hard to nail down.</p>
+      
+      <p>Running the tests without a live browsers instance is both faster, easier to
+      integrate with a CI server and has the advantage of not popping up windows on
+      your machine when testing. That said, as my primary goal here is to set up the
+      most reliable test harness I have gone for Selenium as the driver as it is a
+      more mature offering by virtue of it having been in production use for longer.</p>
+      
+      <h4>FactoryGirl</h4>
+      
+      <p>FactoryGirl makes generating test data trivially easy, but it also makes tests
+      unpredictable if the cleanup of this data is not handled appropriately.</p>
+      
+      <p>By completely separating our JS and non-JS test suites, and using the
+      <code>truncation</code> strategy for DatabaseCleaner on JS tests we get the best of both
+      worlds: JS tests are run cleanly with no database-related race conditions, and
+      all other tests run as quickly as possible using the <code>transaction</code> strategy.</p>
+      
+      <h4>Multi-tenant / Subdomain Testing</h4>
+      
+      <p>The multi-tenant aspect of the system is provided by a Rails engine,
+      custom-built for the purpose of managing accounts, users, authentication and
+      scoping of data based on the current subdomain. The engine has its own test
+      suite which exercises this logic and tests the data scoping in particular. The
+      test suite runs on <code>rack_test</code> only.</p>
+      
+      <p>When testing, FactoryGirl is used to create multiple accounts, each with their
+      own subdomain and database (or schema, in the case of Postgres).</p>
+      
+      <p>Initially when testing the behaviour of the host application I continued with
+      this approach. Now however, to greatly simplify the testing process, all tests
+      <strong>for the host app</strong> (and not the engine) run against a single default tenant.</p>
+      
+      <p>One of the key reasons for doing this is to avoid needing to resolve potentially
+      hundreds of subdomains to <code>localhost</code> when running browser tests. In <code>rack_test</code>
+      it doesn&rsquo;t matter that <code>customer20.example.com</code> doesn&rsquo;t resolve as it doesn&rsquo;t
+      resolve names by DNS in the first place.</p>
+      
+      <p>When using Selenium however the address must resolve. Setting up a local DNS
+      server like <code>dnsmasq</code> is one option, but now your development and test
+      environments need to have this external software installed and running. An
+      alternative could be to use <a href="http://pow.cx">Pow</a>, which I am already using for
+      development, to automatically resolve all subdomains at an appropriate <code>.dev</code>
+      domain.</p>
+      
+      <p>While both approaches work, both would behave erratically on occasion. The
+      solution in the case of Pow was to upgrade to the latest version, but this
+      highlighted the fragility of the approach. With <code>dnsmasq</code> again you have a
+      fragile solution that could break the next time you update your OS, making it
+      undesirable too.</p>
+      
+      <p>By sticking to the one tenant in all tests, all that needs to be done to have
+      browser tests work is to map the one tenant domain to <code>localhost</code> in
+      <code>/etc/hosts</code>, e.g. <code>customer1.yourappname-test.com</code>.</p>
+      
+      <p>To make this work in your Capybara tests, you can define a helper function that
+      will temporarily override <code>Capybara.app_host</code> to point all requests at this
+      domain.</p>
+      
+      <p>For example in <code>lib/testing_support/subdomain_helpers.rb</code> I have:</p>
+      <pre class="highlight ruby"><code><span class="k">module</span> <span class="nn">TestingSupport</span>&#x000A;  <span class="k">module</span> <span class="nn">SubdomainHelpers</span>&#x000A;    <span class="k">def</span> <span class="nf">within_account_subdomain</span>&#x000A;      <span class="n">before</span> <span class="p">{</span>&#x000A;        <span class="k">if</span> <span class="no">Capybara</span><span class="p">.</span><span class="nf">current_driver</span> <span class="o">!=</span> <span class="ss">:rack_test</span>&#x000A;          <span class="no">Capybara</span><span class="p">.</span><span class="nf">app_host</span> <span class="o">=</span>&#x000A;<span class="s2">"http://</span><span class="si">#{</span><span class="n">account</span><span class="p">.</span><span class="nf">subdomain</span><span class="si">}</span><span class="s2">.yourappname-test.com"</span>&#x000A;        <span class="k">else</span>&#x000A;          <span class="no">Capybara</span><span class="p">.</span><span class="nf">app_host</span> <span class="o">=</span> <span class="s2">"http://</span><span class="si">#{</span><span class="n">account</span><span class="p">.</span><span class="nf">subdomain</span><span class="si">}</span><span class="s2">.example.com"</span>&#x000A;        <span class="k">end</span>&#x000A;      <span class="p">}</span>&#x000A;&#x000A;      <span class="n">after</span> <span class="p">{</span> <span class="no">Capybara</span><span class="p">.</span><span class="nf">app_host</span> <span class="o">=</span> <span class="s2">"http://www.example.com"</span> <span class="p">}</span>&#x000A;&#x000A;      <span class="k">yield</span>&#x000A;    <span class="k">end</span>&#x000A;&#x000A;      <span class="no">RSpec</span><span class="p">.</span><span class="nf">configure</span> <span class="k">do</span> <span class="o">|</span><span class="n">config</span><span class="o">|</span>&#x000A;      <span class="n">config</span><span class="p">.</span><span class="nf">extend</span> <span class="no">SubdomainHelpers</span><span class="p">,</span> <span class="ss">:type</span> <span class="o">=&gt;</span> <span class="ss">:feature</span>&#x000A;      <span class="k">end</span>&#x000A;  <span class="k">end</span>&#x000A;<span class="k">end</span>&#x000A;</code></pre>
+      
+      <p>So now on each test invocation, <code>Capybara.app_host</code> will be set appropriately
+      and the correct tenant (which in our case is always the default tenant) will be
+      targeted.</p>
+      
+      <p><strong>Note:</strong> While this approach works and has been reliable, the author of
+      Capybara does not recommend or explicitly support the setting of
+      <code>Capybara.app_host</code> more than once. We can alternatively set this value just
+      once, in our spec helper, and it will work fine with the caveat that we will
+      truly be locked to using just the one tenant in our test suite.</p>
+      
+      <p>The relevant RSpec settings from the spec helper are:</p>
+      <pre class="highlight ruby"><code><span class="c1"># Explicitly set the test server process to a particular port</span>&#x000A;<span class="c1"># so that we can access it directly at will.</span>&#x000A;<span class="no">Capybara</span><span class="p">.</span><span class="nf">server_port</span> <span class="o">=</span> <span class="mi">10000</span>&#x000A;&#x000A;<span class="c1"># To ensure that browser tests can find the test server process,</span>&#x000A;<span class="c1"># always include the port number in URLs.</span>&#x000A;<span class="no">Capybara</span><span class="p">.</span><span class="nf">always_include_port</span> <span class="o">=</span> <span class="kp">true</span>&#x000A;</code></pre>
+      
+      <p>With the port set and Capybara ensuring that every request includes the port, we
+      can be sure that all browser tests will hit
+      <code>http://customer1.yourappname-test.com:10000</code>.</p>
+      
+      <h4>Asset Generation and Serving in Tests</h4>
+      
+      <p>Chances are, with your stock Rails/RSpec/Capybara setup, when you call
+      <code>save_and_open_page</code> in a feature spec you will be presented with a completely
+      unstyled version of your app, as both the CSS and JS asset creation and serving
+      will be broken.</p>
+      
+      <p>This isn&rsquo;t particularly important when you&rsquo;re testing non-Javascript interaction
+      with your app but as soon as you get into browser testing then this will be an
+      issue for two key reasons:</p>
+      
+      <ul>
+      <li>If Javascript from the asset pipeline is not served then it will of course
+      not be available to test.</li>
+      <li>The stock asset settings for the test environment can cause RSpec/Capybara to
+      hang (requiring <code>kill -9</code> to halt the process).</li>
+      </ul>
+      
+      <p>Searching online you will find various solutions, such as precompiling all
+      assets on each test run and serving them using <code>file://</code> URLs pointing to the
+      <code>public</code> directory of your Rails app.</p>
+      
+      <p>The simplest approach that I have found, and which works well, is simply to set
+      <code>config.assets.debug = true</code> in <code>config/environments/test.rb</code>.</p>
+      
+      <p>Doing so causes assets to be generated and served just as if you were using the
+      development server; all assets (JS and CSS) should now be generated and served
+      correctly.</p>
+      
+      <h2>Wrapping Up</h2>
+      
+      <p>This is more than likely a work in progress. While the combination of RSpec,
+      Capybara, FactoryGirl and Selenium have provided a welcome productivity boost on
+      the development side, they have also caused a great deal of time to be spent on
+      getting them all to work together reliably, particularly in a multi-tenant
+      setting.</p>
+      
+      <p>Your mileage may vary but I hope these notes will help you to avoid some of the
+      less-well-documented pitfalls, and so spend more time on actually shipping
+      features.</p>
+      
+      <p>As previously mentioned, I will be taking an in-depth look at the stock Rails
+      testing framework and methodologies again in the near future. While I appreciate
+      the neatness of these various 3rd party libraries that have generally made me
+      more productive, Rails is always on the move and the more moving parts we have
+      that must keep up, the more points of failure we have, and so the more time we
+      spend debugging issues that have nothing to do with shipping features and
+      providing value to users and customers.</p>
+      
+      <p>I think it&rsquo;s valuable to keep going back to the <em>point</em> of testing, which is (in
+      my mind) to ship reliable software and to make refactoring safer, so that we can
+      always be working to reduce the technical debt that we normally incur when
+      evolving software over time. While tools like RSpec and FactoryGirl seem on the
+      surface to be neat solutions to real problems, it is perhaps the case that
+      sticking with the standard Rails testing methods will better serve that goal.</p>
+      <hr>
+      <div class='text-center'>
+        <p>Did you find this post useful? If you would like help with anything then you can contact me any time via <a href="https://twitter.com/stymis" target="_blank">Twitter</a>.</p>
+        <br>
+        <br>
+      </div>
+    </div>
+  </body>
+</html>
