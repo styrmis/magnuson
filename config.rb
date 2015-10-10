@@ -14,7 +14,7 @@ activate :blog do |blog|
   blog.permalink = "{category}/{title}"
 
   # blog.taglink = "tags/{tag}.html"
-  # blog.layout = "layout"
+  blog.layout = "articles"
   # blog.summary_separator = /(READMORE)/
   # blog.summary_length = 250
   # blog.year_link = "{year}.html"
