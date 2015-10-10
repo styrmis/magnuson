@@ -31,6 +31,10 @@ activate :blog do |blog|
   blog.page_link = "page/{num}"
 end
 
+activate :deploy do |deploy|
+  deploy.method = :git
+end
+
 activate :directory_indexes
 
 activate :syntax
