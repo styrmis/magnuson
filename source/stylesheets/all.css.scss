@@ -4,3 +4,7 @@ $font-size-base: 18px;
 @import "bootstrap";
 
 @import "_syntax";
+
+#footer {
+  background-color: $navbar-inverse-bg;
+}
