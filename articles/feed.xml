@@ -1,18 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title>Blog Name</title>
-  <subtitle>Blog subtitle</subtitle>
-  <id>http://blog.url.com/articles</id>
-  <link href="http://blog.url.com/articles"/>
-  <link href="http://blog.url.com/articles/feed.xml" rel="self"/>
-  <updated>2014-08-20T00:00:00+01:00</updated>
+  <title>Stefan Magnuson</title>
+  <subtitle>Articles on Ruby development and bootstrapping</subtitle>
+  <id>https://stefan.magnuson.co/articles</id>
+  <link href="https://stefan.magnuson.co/articles"/>
+  <link href="https://stefan.magnuson.co/articles/feed.xml" rel="self"/>
+  <updated>2016-01-28T00:00:00+00:00</updated>
   <author>
-    <name>Blog Author</name>
+    <name>Stefan Magnuson</name>
   </author>
   <entry>
+    <title>Reinstalling MySQL on OSX using Homebrew</title>
+    <link rel="alternate" href="https://stefan.magnuson.co/articles/osx/reinstalling-mysql-on-osx-with-homebrew/"/>
+    <id>https://stefan.magnuson.co/articles/osx/reinstalling-mysql-on-osx-with-homebrew/</id>
+    <published>2016-01-28T00:00:00+00:00</published>
+    <updated>2016-01-28T10:46:09+00:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;If you find that you need to have a particular version of MySQL installed on
+your OSX machine (e.g. to match the version running in production) but you
+already have a different version of MySQL installed via Homebrew, then the notes
+below may help you to replace the installed version with the one you need.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;DISCLAIMER:&lt;/strong&gt; The following instructions involve the complete removal of the
+existing MySQL installation, including any databases. Proceed with caution, and
+double check every command&amp;ndash;this is just meant to be a rough guide to an
+approach you can take to achieve the desired result.&lt;/p&gt;
+
+&lt;h2&gt;Uninstalling&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;Check &lt;code&gt;~/Library/LaunchAgents&lt;/code&gt;, if &lt;code&gt;homebrew.mxcl.mysql.plist&lt;/code&gt; is present then:
+
+&lt;ol&gt;
+&lt;li&gt;Unload: &lt;code&gt;launchctl unload -w ~/Library/LaunchAgents/homebrew.mxcl.mysql.plist&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Remove: &lt;code&gt;rm ~/Library/LaunchAgents/homebrew.mxcl.mysql.plist&lt;/code&gt;&lt;/li&gt;
+&lt;/ol&gt;&lt;/li&gt;
+&lt;li&gt;Stop the MySQL server process: &lt;code&gt;sudo mysql.server stop&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;brew remove mysql&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;brew cleanup&lt;/code&gt; (note that this command will clean up after more than just MySQL)&lt;/li&gt;
+&lt;li&gt;Remove if present:
+
+&lt;ol&gt;
+&lt;li&gt;&lt;code&gt;/usr/local/var/mysql&lt;/code&gt;&lt;/li&gt;
+&lt;/ol&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2&gt;Reinstalling&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;Select the version that you want to install (in my case, &lt;code&gt;5.5.x&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;brew tap homebrew/versions&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;brew install mysql55&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Follow the post-install instructions as provided by the &lt;code&gt;brew install&lt;/code&gt; output&lt;/li&gt;
+&lt;li&gt;Add the appropriate directoy to your &lt;code&gt;PATH&lt;/code&gt;, e.g. &lt;code&gt;/usr/local/opt/mysql55/bin&lt;/code&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3&gt;Post-install instructions&lt;/h3&gt;
+
+&lt;p&gt;Yours may differ from the below.&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;To have launchd start homebrew/versions/mysql55 at login:
+  ln -sfv /usr/local/opt/mysql55/*.plist ~/Library/LaunchAgents
+Then to load homebrew/versions/mysql55 now:
+  launchctl load ~/Library/LaunchAgents/homebrew.mxcl.mysql55.plist
+Or, if you don't want/need launchctl, you can just run:
+  /usr/local/opt/mysql55/bin/mysql.server start
+
+WARNING: launchctl will fail when run under tmux.
+&lt;/code&gt;&lt;/pre&gt;
+</content>
+  </entry>
+  <entry>
     <title>Robust Integration Testing in Rails 4 with RSpec, Capybara and Selenium</title>
-    <link rel="alternate" href="http://blog.url.com/articles/rails/robust-integration-testing-in-rails-4-with-rspec-capybara-and-selenium/"/>
-    <id>http://blog.url.com/articles/rails/robust-integration-testing-in-rails-4-with-rspec-capybara-and-selenium/</id>
+    <link rel="alternate" href="https://stefan.magnuson.co/articles/rails/robust-integration-testing-in-rails-4-with-rspec-capybara-and-selenium/"/>
+    <id>https://stefan.magnuson.co/articles/rails/robust-integration-testing-in-rails-4-with-rspec-capybara-and-selenium/</id>
     <published>2014-08-20T00:00:00+01:00</published>
     <updated>2015-10-10T21:28:38+01:00</updated>
     <author>
@@ -514,8 +576,8 @@ sticking with the standard Rails testing methods will better serve that goal.&lt
   </entry>
   <entry>
     <title>Simpler Handling of AJAX Form Errors in Rails 4</title>
-    <link rel="alternate" href="http://blog.url.com/articles/rails/simpler-handling-of-ajax-form-errors-in-rails-4/"/>
-    <id>http://blog.url.com/articles/rails/simpler-handling-of-ajax-form-errors-in-rails-4/</id>
+    <link rel="alternate" href="https://stefan.magnuson.co/articles/rails/simpler-handling-of-ajax-form-errors-in-rails-4/"/>
+    <id>https://stefan.magnuson.co/articles/rails/simpler-handling-of-ajax-form-errors-in-rails-4/</id>
     <published>2014-08-18T00:00:00+01:00</published>
     <updated>2015-10-10T19:29:16+01:00</updated>
     <author>
@@ -684,8 +746,8 @@ sticking with the standard Rails testing methods will better serve that goal.&lt
   </entry>
   <entry>
     <title>Sending Emails Using Rails and Bootstrap</title>
-    <link rel="alternate" href="http://blog.url.com/articles/rails/sending-emails-using-rails-and-bootstrap/"/>
-    <id>http://blog.url.com/articles/rails/sending-emails-using-rails-and-bootstrap/</id>
+    <link rel="alternate" href="https://stefan.magnuson.co/articles/rails/sending-emails-using-rails-and-bootstrap/"/>
+    <id>https://stefan.magnuson.co/articles/rails/sending-emails-using-rails-and-bootstrap/</id>
     <published>2014-04-21T00:00:00+01:00</published>
     <updated>2015-10-10T21:31:53+01:00</updated>
     <author>
@@ -880,8 +942,8 @@ sticking with the standard Rails testing methods will better serve that goal.&lt
   </entry>
   <entry>
     <title>Don't Set Goals—Create Systems</title>
-    <link rel="alternate" href="http://blog.url.com/articles/life/dont-set-goals-create-systems/"/>
-    <id>http://blog.url.com/articles/life/dont-set-goals-create-systems/</id>
+    <link rel="alternate" href="https://stefan.magnuson.co/articles/life/dont-set-goals-create-systems/"/>
+    <id>https://stefan.magnuson.co/articles/life/dont-set-goals-create-systems/</id>
     <published>2013-10-15T00:00:00+01:00</published>
     <updated>2015-10-10T20:36:50+01:00</updated>
     <author>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta content='IE=edge;chrome=1' http-equiv='X-UA-Compatible'>
+    <meta content='width=device-width, initial-scale=1' name='viewport'>
+    <title>Reinstalling MySQL on OSX using Homebrew</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/articles/feed.xml" />
+    <link href="/stylesheets/all.css" rel="stylesheet" />
+    <script src="/javascripts/all.js"></script>
+  </head>
+  <body>
+    <nav class='navbar navbar-inverse navbar-static-top'>
+      <div class='container'>
+        <div class='navbar-header'>
+          <button aria-controls='navbar' aria-expanded='false' class='navbar-toggle collapsed' data-target='#navbar' data-toggle='collapse' type='button'>
+            <span class='sr-only'>Toggle navigation</span>
+            <span class='icon-bar'></span>
+            <span class='icon-bar'></span>
+            <span class='icon-bar'></span>
+          </button>
+          <a class='navbar-brand' href='/'>Stefan Magnuson</a>
+        </div>
+        <div class='collapse navbar-collapse' id='navbar'>
+          <ul class='nav navbar-nav'>
+            <li class='active'>
+              <a href='/'>Home</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <div class='container'>
+      <h1>Reinstalling MySQL on OSX using Homebrew</h1>
+      <p>If you find that you need to have a particular version of MySQL installed on
+      your OSX machine (e.g. to match the version running in production) but you
+      already have a different version of MySQL installed via Homebrew, then the notes
+      below may help you to replace the installed version with the one you need.</p>
+      
+      <p><strong>DISCLAIMER:</strong> The following instructions involve the complete removal of the
+      existing MySQL installation, including any databases. Proceed with caution, and
+      double check every command&ndash;this is just meant to be a rough guide to an
+      approach you can take to achieve the desired result.</p>
+      
+      <h2>Uninstalling</h2>
+      
+      <ol>
+      <li>Check <code>~/Library/LaunchAgents</code>, if <code>homebrew.mxcl.mysql.plist</code> is present then:
+      
+      <ol>
+      <li>Unload: <code>launchctl unload -w ~/Library/LaunchAgents/homebrew.mxcl.mysql.plist</code></li>
+      <li>Remove: <code>rm ~/Library/LaunchAgents/homebrew.mxcl.mysql.plist</code></li>
+      </ol></li>
+      <li>Stop the MySQL server process: <code>sudo mysql.server stop</code></li>
+      <li><code>brew remove mysql</code></li>
+      <li><code>brew cleanup</code> (note that this command will clean up after more than just MySQL)</li>
+      <li>Remove if present:
+      
+      <ol>
+      <li><code>/usr/local/var/mysql</code></li>
+      </ol></li>
+      </ol>
+      
+      <h2>Reinstalling</h2>
+      
+      <ol>
+      <li>Select the version that you want to install (in my case, <code>5.5.x</code>)</li>
+      <li><code>brew tap homebrew/versions</code></li>
+      <li><code>brew install mysql55</code></li>
+      <li>Follow the post-install instructions as provided by the <code>brew install</code> output</li>
+      <li>Add the appropriate directoy to your <code>PATH</code>, e.g. <code>/usr/local/opt/mysql55/bin</code></li>
+      </ol>
+      
+      <h3>Post-install instructions</h3>
+      
+      <p>Yours may differ from the below.</p>
+      <pre class="highlight plaintext"><code>To have launchd start homebrew/versions/mysql55 at login:&#x000A;  ln -sfv /usr/local/opt/mysql55/*.plist ~/Library/LaunchAgents&#x000A;Then to load homebrew/versions/mysql55 now:&#x000A;  launchctl load ~/Library/LaunchAgents/homebrew.mxcl.mysql55.plist&#x000A;Or, if you don't want/need launchctl, you can just run:&#x000A;  /usr/local/opt/mysql55/bin/mysql.server start&#x000A;&#x000A;WARNING: launchctl will fail when run under tmux.&#x000A;</code></pre>
+      <hr>
+      <div class='text-center'>
+        <p>Did you find this post useful? If you would like help with anything then you can contact me any time via <a href="https://twitter.com/stymis" target="_blank">Twitter</a>.</p>
+        <br>
+        <br>
+      </div>
+    </div>
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+      ga('create', 'UA-95628-24', 'auto');
+      ga('send', 'pageview');
+    </script>
+  </body>
+</html>
