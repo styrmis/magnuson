@@ -35,6 +35,13 @@ activate :deploy do |deploy|
   deploy.method = :git
 end
 
+activate :google_analytics do |ga|
+  ga.tracking_id = 'UA-95628-24'
+
+  # Don't track in the development environment
+  ga.development = false
+end
+
 activate :directory_indexes
 
 activate :syntax

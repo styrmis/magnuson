@@ -6,6 +6,8 @@ gem "middleman", "~> 3.4.0"
 gem "middleman-blog", "~> 3.5.3"
 gem "middleman-deploy", "~> 1.0"
 
+gem "middleman-google-analytics"
+
 gem "redcarpet"
 gem "middleman-syntax"
 
