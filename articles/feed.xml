@@ -5,10 +5,81 @@
   <id>https://stefan.magnuson.co/articles</id>
   <link href="https://stefan.magnuson.co/articles"/>
   <link href="https://stefan.magnuson.co/articles/feed.xml" rel="self"/>
-  <updated>2016-01-28T00:00:00+00:00</updated>
+  <updated>2016-02-05T00:00:00+00:00</updated>
   <author>
     <name>Stefan Magnuson</name>
   </author>
+  <entry>
+    <title>Using the ES7 Spread Operator with Webpack</title>
+    <link rel="alternate" href="https://stefan.magnuson.co/articles/frontend/using-es7-spread-operator-with-webpack/"/>
+    <id>https://stefan.magnuson.co/articles/frontend/using-es7-spread-operator-with-webpack/</id>
+    <published>2016-02-05T00:00:00+00:00</published>
+    <updated>2016-02-05T12:53:54+00:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;h2&gt;The Problem&lt;/h2&gt;
+
+&lt;p&gt;I&amp;rsquo;m currently evaluating Redux as a means to tidy up a React app, and in
+following the examples in the docs came across the spread operator (&lt;code&gt;...&lt;/code&gt;).&lt;/p&gt;
+
+&lt;p&gt;In the following code the spread operator copies in all of the keys and values
+of the existing state, and allows us to extend it with a new value for &lt;code&gt;bold&lt;/code&gt;:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;const comment = (state, action) =&amp;gt; {
+  switch (action.type) {
+    case 'COMMENT_TOGGLE_BOLD ':
+      return {
+        ...state,
+        bold: !state.bold
+      }
+    default:
+      return state
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Problem is, while I have set up Webpack 6 to succesfully transpile and bundle
+JSX and ES6 (ES2015), it fails to recognise this use of the spread operator as
+at time of writing it is still in the proposal stage:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;Module build failed: SyntaxError: /.../assets/js/reducers/comments.js:
+Unexpected token (9:8)
+   7 |
+   8 |       return {
+&amp;gt;  9 |         ...state,
+     |         ^
+  10 |         bold: !state.bold
+  11 |       }
+  12 |     default:
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;A Quick Solution&lt;/h2&gt;
+
+&lt;p&gt;The quickest solution I found to resolve this, after trying to add in specific
+plugins like &lt;code&gt;transform-object-rest-spread&lt;/code&gt;, was to enable the &lt;code&gt;stage-2&lt;/code&gt; preset:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;npm install --save babel-preset-stage-2
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And then in &lt;code&gt;webpack.config.js&lt;/code&gt;:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;module: {
+  loaders: [
+    {
+      test: /\.jsx?$/,
+      exclude: /node_modules/,
+      loader: 'babel-loader',
+      query: {
+        presets:[ 'es2015', 'react', 'stage-2' ]
+      }
+    }
+  ]
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Be aware that the additional operators and behaviour which this preset brings in
+may be subject to change&amp;ndash;in this case I think the benefits of the spread
+operator in reducing boilerplate override those concerns, as the operator
+semantics appear likely to become standard before long.&lt;/p&gt;
+</content>
+  </entry>
   <entry>
     <title>Reinstalling MySQL on OSX using Homebrew</title>
     <link rel="alternate" href="https://stefan.magnuson.co/articles/osx/reinstalling-mysql-on-osx-with-homebrew/"/>
