@@ -65,8 +65,9 @@ app, but its `DATABASE_URL` is still pointing to that of production.
 
 First, take a fresh backup of production before continuing:
 
-`heroku pg:backups capture -a production-app-name`
-``curl `heroku pg:backups public-url -a production-app-name` -o `date +5Y5m5d`.pgbackup``
+`% heroku pg:backups capture -a production-app-name`
+
+``% curl `heroku pg:backups public-url -a production-app-name` -o `date +5Y5m5d`.pgbackup``
 
 With a backup safely stored, we look at the configuration of each application:
 
