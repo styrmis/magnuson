@@ -89,7 +89,15 @@
       commands and it&rsquo;s easy to get used to that, but it seems that not all of these
       commands receive the same polish and attention.</p>
       
+      <p>Final caveat (hopefuly) is that Heroku will not necessarily use the same
+      Postgres version: my production 9.3 database was cloned to a new instance
+      running Postgres 9.5.</p>
+      
       <h2>Resolving the issue</h2>
+      
+      <p><strong>NOTE:</strong> Double and triple-check all commands before running them&ndash;the point of
+      the article is that Heroku&rsquo;s simple tooling can make it equally simple to
+      compromise your production deployment.</p>
       
       <h3>The Situation</h3>
       
@@ -124,6 +132,25 @@
       staging configuration now has <code>DATABASE_URL</code> pointing at the new staging
       database, and <strong>not</strong> our production database:</p>
       <pre class="highlight plaintext"><code>% heroku config -a production-app-name | grep URL&#x000A;DATABASE_URL:               postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1&#x000A;HEROKU_POSTGRESQL_ROSE_URL: postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1&#x000A;% heroku config -a staging-app-name | grep URL&#x000A;DATABASE_URL:               postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2&#x000A;HEROKU_POSTGRESQL_ROSE_URL: postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2&#x000A;</code></pre>
+      
+      <h2>Updating the staging database</h2>
+      
+      <p>At some point you will want to refresh the data in staging. This can be achieved
+      using the <code>pg:copy</code> command, though the first time through the output of the
+      command will likely give you pause for thought:</p>
+      <pre class="highlight plaintext"><code>% heroku pg:copy production-app-name::ROSE staging-app-name::ROSE --app staging-app-name&#x000A;&#x000A; !    WARNING: Destructive Action&#x000A; !    This command will remove all data from ROSE&#x000A; !    Data from ROSE will then be transferred to ROSE&#x000A; !    This command will affect the app: staging-app-name&#x000A; !    To proceed, type "staging-app-name or re-run this command with --confirm staging-app-name&#x000A;&#x000A;&gt; ^C !    Command cancelled.&#x000A;</code></pre>
+      
+      <p>If I could find clear guidance on how I should go about changing the colour name
+      of my staging database I would do so, to avoid the unpleasant ambiguity in the
+      destructive action warning.</p>
+      
+      <p>For now, the fact that I am explicitly targetting the staging app <em>should</em>
+      protect the production environment, though as we have seen this protection can
+      easily be bypassed by the <code>fork</code> command as it shares the <code>DATABASE_URL</code> between
+      the apps.</p>
+      
+      <p>Allow the command to run and hopefully you should now have an up-to-date staging
+      database.</p>
       <hr>
       <div class='text-center'>
         <p>Did you find this post useful? If you would like help with anything then you can contact me any time via <a href="https://twitter.com/stymis" target="_blank">Twitter</a>.</p>
