@@ -5,10 +5,41 @@
   <id>https://stefan.magnuson.co/articles</id>
   <link href="https://stefan.magnuson.co/articles"/>
   <link href="https://stefan.magnuson.co/articles/feed.xml" rel="self"/>
-  <updated>2016-02-05T00:00:00+00:00</updated>
+  <updated>2016-03-06T00:00:00+00:00</updated>
   <author>
     <name>Stefan Magnuson</name>
   </author>
+  <entry>
+    <title>Kinesis Freestyle 2 Keyboard Review</title>
+    <link rel="alternate" href="https://stefan.magnuson.co/articles/programming/kinesis-freestyle-2-keyboard-review/"/>
+    <id>https://stefan.magnuson.co/articles/programming/kinesis-freestyle-2-keyboard-review/</id>
+    <published>2016-03-06T00:00:00+00:00</published>
+    <updated>2016-03-06T17:51:36+00:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;h2&gt;First Impressions&lt;/h2&gt;
+
+&lt;p&gt;First impression upon unboxing the keyboard is that all of the reviews that I
+had read were out of date&amp;ndash;Kinesis have clearly paid attention to feedback and
+some of the gripes that I had read about (e.g. having a browser &amp;lsquo;home&amp;rsquo; hotkey,
+making the insert function require the pressing of &lt;em&gt;fn&lt;/em&gt;) had been addressed.&lt;/p&gt;
+
+&lt;p&gt;As such, the keyboard layout is easily standard enough to allow for a smooth
+transition from a regular keyboard (Apple wired and wireless keyboards) to the
+Kinesis&amp;ndash;thus far I have not experienced any real slowdown in typing speed.&lt;/p&gt;
+
+&lt;p&gt;I will update this review after having used the keyboard for some months, but my
+first impression of the keyboard has been great. The touch is extremely light,
+the adjustability via the VIP3 attachment makes a pleasing difference, but most
+of all the typing experience is simply much more enjoyable than the wireless
+Apple keyboard, which requires that you keep your hands close together all day.&lt;/p&gt;
+
+&lt;p&gt;So far the only downside is that the escape key is an absurdly long way from the
+home row. I have sorted this in Vim by mapping other keys to escape however, so
+this is not a big deal.&lt;/p&gt;
+</content>
+  </entry>
   <entry>
     <title>Using the ES7 Spread Operator with Webpack</title>
     <link rel="alternate" href="https://stefan.magnuson.co/articles/frontend/using-es7-spread-operator-with-webpack/"/>
@@ -1009,74 +1040,6 @@ sticking with the standard Rails testing methods will better serve that goal.&lt
 &lt;p&gt;&lt;a href="https://litmus.com/pub/d831ecc" target="_blank"&gt;&lt;img src="http://stefan.haflidason.com/assets/2014/04/Screen-Shot-2014-04-21-at-16.49.37.png" alt="Screen Shot 2014-04-21 at 16.49.37" width="939" height="448" class="aligncenter size-full wp-image-695" /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;In order to get going quickly I&amp;rsquo;ll be starting with one of the battle-tested templates that &lt;a href="https://github.com/mailchimp/email-blueprints"&gt;Mailchimp has open sourced&lt;/a&gt;. From there it will simply be a case of carefully linking up the Bootstrap style variables (e.g. colours) with the provided HTML. As long as no drastic changes are introduced, and the automatic inlining done by Premailer doesn&amp;rsquo;t break anything, then we should get widely-compatible email templates for our Rails app with a relatively small time investment.&lt;/p&gt;
-</content>
-  </entry>
-  <entry>
-    <title>Don't Set Goals—Create Systems</title>
-    <link rel="alternate" href="https://stefan.magnuson.co/articles/life/dont-set-goals-create-systems/"/>
-    <id>https://stefan.magnuson.co/articles/life/dont-set-goals-create-systems/</id>
-    <published>2013-10-15T00:00:00+01:00</published>
-    <updated>2015-10-10T20:36:50+01:00</updated>
-    <author>
-      <name>Article Author</name>
-    </author>
-    <content type="html">&lt;p&gt;Cartoonists are an interesting lot: they have a job that many would see as being unproductive or even pointless, but since when did being incisive become unproductive?&lt;/p&gt;
-
-&lt;p&gt;Bill Watterson&amp;rsquo;s insights on life as expressed through Calvin and Hobbes have entertained and helped millions. If you haven&amp;rsquo;t seen &lt;a href="http://zenpencils.com/comic/128-bill-watterson-a-cartoonists-advice/" target="_blank"&gt;this bit of tribute art&lt;/a&gt;, where a fan has drawn artwork to accompany the text of a speech by Bill then I highly recommend you take a look now. If you&amp;rsquo;re working from home and you&amp;rsquo;re the kind of person who wants to put family first then you may find its message particularly comforting.&lt;/p&gt;
-
-&lt;p&gt;When it comes to business we have Scott Adams, creator of Dilbert. The cartoon itself will make you chuckle but Adams also shares many insights from his long and varied career in his writings. In &lt;a href="http://online.wsj.com/article/SB10001424052702304626104579121813075903866.html" target="_blank"&gt;this article for the Wall Street Journal&lt;/a&gt; he makes two strong recommendations:
-&lt;ol&gt;
-  &lt;li&gt;&lt;span style="line-height: 14px;"&gt;Don&amp;rsquo;t set goals, create systems instead.&lt;/span&gt;&lt;/li&gt;
-  &lt;li&gt;Do not follow your passion.&lt;/li&gt;
-&lt;/ol&gt;
-Both of these ideas resonated strongly with me: on creating systems instead of setting goals I created &lt;a href="http://q2.io" target="_blank"&gt;Q2&lt;/a&gt; which is my system for getting the important things in life done without setting rigid goals. Adams urges us to stop setting rigid goals such as &amp;ldquo;lose 10 pounds&amp;rdquo; for two key reasons:
-&lt;ol&gt;
-  &lt;li&gt;&lt;span style="line-height: 14px;"&gt;As soon as you have set the goal, you&amp;rsquo;re instantly in a state of failure, as naturally you&amp;rsquo;ve made no progress towards the goal yet.&lt;/span&gt;&lt;/li&gt;
-  &lt;li&gt;Once you lose those 10 pounds, then what? You have just lost your purpose; you could set yourself another goal but now moments after achieving your goal you&amp;rsquo;ve plunged yourself right back into a state of failure, again at 0% progress towards this new goal.&lt;/li&gt;
-&lt;/ol&gt;
-To this I would add that any lapses in progress can completely kill your enthusiasm and energy to work towards this goal. Say if you lose 8 pounds and you&amp;rsquo;re feeling great but then you attend a friend&amp;rsquo;s wedding, you enjoy the celebrations with everyone but then discover that you&amp;rsquo;ve just gained back 5 pounds, you&amp;rsquo;ll naturally feel like more of a failure and may just abandon the goal as hopeless.&lt;/p&gt;
-
-&lt;p&gt;This could also happen at a larger scale, say with a business venture. At the first major setback you may be so disheartened that you either quit straight away or otherwise lose your momentum and the venture fizzles out.&lt;/p&gt;
-
-&lt;p&gt;One way to get around this is to build systems that move you in the right direction. Setbacks are less important now as you aren&amp;rsquo;t fixated on a particular inflexible goal but rather a direction: stray away from that path and all you need to succeed today is to nudge yourself back towards that path. Keep doing that consistently and not only are you far more likely to succeed in your endeavour but you&amp;rsquo;re going to be generating a lot less negativity when you hit the inevitable setbacks that life will throw your way.&lt;/p&gt;
-
-&lt;p&gt;System may be slightly too big a word though; what we are looking for is just a bit more structure in our lives and some routines that help us through the week and keep us on the right track. Such systems/routines could be as simple as:
-&lt;ul&gt;
-  &lt;li&gt;&lt;span style="line-height: 14px;"&gt;Reserving the first hour of each day for the activity you absolutely want to get done each day. For me at the moment this is writing, in the past it has been exercise; that time right after breakfast when you&amp;rsquo;ve got your first coffee of the day may well be the most productive part of your day and starting the day with a quick win (1,000 words written, a run) means that no matter what happens that day you&amp;#39;ve already taken a step in the right direction.&lt;/span&gt;&lt;/li&gt;
-  &lt;li&gt;Setting up delivery of the most basic groceries that you always need; if you sometimes skip breakfast because you suddenly find there&amp;rsquo;s no milk for your cereal or you pick up fast food because you&amp;rsquo;re out of pasta then this is one way to avoid this happening. Also if you always have fresh fruit and vegetables to hand then you&amp;rsquo;re far more likely to eat them on a regular basis and avoid the junk.&lt;/li&gt;
-  &lt;li&gt;Buy people presents throughout the year. If you see something that you know a friend or family member would love, but their birthday isn&amp;rsquo;t for another 8 months, just buy it anyway and put it in a cupboard: you wouldn&amp;rsquo;t believe how much time this saves and the gifts are likely to be appreciated more than something you hunted out at the last minute.
-&lt;ul&gt;
-  &lt;li&gt;As I travel quite a lot I&amp;rsquo;ve stopped doing this but in doing so have discovered something more powerful: when your friends and family are talking about how badly they want something, open up Evernote and add it to your presents note, where under each person&amp;rsquo;s name you put a list of things that they&amp;rsquo;ve been talking about wanting. When their birthday or Christmas comes around, if they haven&amp;rsquo;t bought it for themselves then give it to them and they&amp;rsquo;ll think you might be psychic. In truth, you&amp;rsquo;re just paying attention which is a nice gift to give to anyone.&lt;/li&gt;
-  &lt;li&gt;Another one is, when you go out and buy someone a birthday card, buy several cards that you like. Years back I used to just pop out to a gallery that was close by that had a good selection of cards, after all it&amp;rsquo;s only a 10 minute walk, but overall it would take 30-40 minutes in total and a couple of weeks later I&amp;rsquo;d be off again, for someone else&amp;rsquo;s birthday. So now every time I&amp;rsquo;m somewhere with a beautiful selection of cards (e.g. places like Kamakura and Kyoto in Japan, or a gallery in London) then I&amp;rsquo;ll stock up and so when it comes to birthdays it&amp;rsquo;s just a case of picking the one that best suits that person.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-  &lt;li&gt;Get into the habit of keeping notes in a structured way. I use &lt;a href="http://simplenote.com" target="_blank"&gt;Simplenote&lt;/a&gt; which syncs perfectly across my Mac and my iPhone, this is where I:
-&lt;ul&gt;
-  &lt;li&gt;Jot down ideas as they occur to me; if you start to write down all the ideas that you have as they occur to you, you will be amazed at the trove of ideas you will generate throughout the year.&lt;/li&gt;
-  &lt;li&gt;The same goes for writing ideas, if you&amp;rsquo;re taking a walk and something interesting occurs to you that you would like to explore more then note it down and when it comes to your morning writing session you&amp;rsquo;ll never be stuck for a topic to write about.&lt;/li&gt;
-  &lt;li&gt;Films to watch: as people recommend films to you or you see a poster or review, note down the name. Then when you find yourself renting a DVD in a store like Tsutaya in Japan then you are spared their near-useless methods of presentation.&lt;/li&gt;
-  &lt;li&gt;Once in a while, keep a log of negative thoughts as they occur to you; the patterns that emerge may be quite startling and give you an obvious lead on which problems to tackle first.&lt;/li&gt;
-  &lt;li&gt;If you have children or nieces/nephews, I&amp;rsquo;d recommend getting into the habit of jotting down the stories you tell people as they say their first words and do all sorts of funny and cute things; over time it will develop into a real treasure trove of memories that you might otherwise not quite remember. If the memory is yours alone and you forget it, you wouldn&amp;rsquo;t even know that you had forgotten it; regular writing of this kind may give you quite a shock regarding how much you would have forgotten otherwise.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-  &lt;li&gt;Build and maintain swipe files:
-&lt;ul&gt;
-  &lt;li&gt;When you see web site designs that you like clip them into Evernote and write a quick sentence about it. Later when you are designing your own sites you can draw inspiration (don&amp;rsquo;t copy!) from them, or if you&amp;rsquo;re working with a designer you have examples of roughly what you&amp;rsquo;re aiming for to hand. If you have ever been trying to search for a page you saw a few months back with a design that you really liked then this will not only save you time but will help you to combine design elements and techniques from disparate sources that will improve your own designs.&lt;/li&gt;
-  &lt;li&gt;Gather quotes that you find inspirational, not just from famous people but from anyone and anywhere; if you found it inspirational then it is worth keeping and the collection may be of use to others. This is somewhat akin to what Tim Church has done with his site &lt;a href="http://minimotivation.com" target="_blank"&gt;Mini Motivation&lt;/a&gt;.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-Admittedly the line can be blurry between what is a goal and what is a system: writing 1,000 words a day is basically a goal, but the structure you set up for yourself (writing first thing after breakfast) is what helps you get it done, and I would be tempted to drop the word count target and instead just focus on &amp;ldquo;turning up for work&amp;rdquo;: if you sit down after breakfast and start writing, and keep doing that consistently, then some days you will write much more than 1,000 words, others less, it doesn&amp;rsquo;t matter as you&amp;rsquo;re headed in the right direction.&lt;/p&gt;
-
-&lt;p&gt;Goals also bring more guilt into your life. This may be perfectly manageable if your only goal is to get in shape, but you probably have goals in your working life, regarding your family, your hobbies&amp;hellip; keeping on top of all of these all the time is a near-impossibility, and focussing on one naturally de-emphasises the others to the point that you start to forget that you even made the commitment to yourself in the first place which causes further remorse.&lt;/p&gt;
-
-&lt;p&gt;One solution to this is to build one habit at a time, at a rate of no more than one a month. This month you&amp;rsquo;ll go running every morning until it&amp;rsquo;s more natural for you to go running than to not. Next month you&amp;rsquo;ll get into writing every day, the following month it will be something else.&lt;/p&gt;
-
-&lt;p&gt;The solution I prefer is to track when I give time to these important things in my life and use a system to see at a glance which parts I&amp;rsquo;ve been neglecting, and perhaps which activities I am over-committing on, to the detriment of other dimensions of life. No one wants to live like a robot, lapsing is inevitable and shouldn&amp;rsquo;t be a cause of guilt. Rather, you just pick one of these activities and spend some time on it. Such systems shouldn&amp;rsquo;t be telling you what to do each day, they should just be supporting you, making it easy to make each day productive without the guilt trip that you get as your calendar is spamming you with notifications and your &amp;lsquo;due&amp;rsquo; todo list is an ever-growing mountain of things you should apparently be doing but aren&amp;rsquo;t.&lt;/p&gt;
-
-&lt;p&gt;If you like the idea of a general system which is designed to be low-guilt yet high impact then &lt;a href="http://q2-io.herokuapp.com" target="_blank"&gt;I&amp;rsquo;d like you to try Q2&lt;/a&gt; and let me know what you think, and how you get on with it.&lt;/p&gt;
-
-&lt;p&gt;And if you have some systems that you&amp;rsquo;ve built into your life that help you be more effective, or simply spend more time on what&amp;rsquo;s important, then &lt;a href="mailto:styrmis@gmail.com"&gt;I&amp;rsquo;d love to hear about them&lt;/a&gt;.&lt;/p&gt;
 </content>
   </entry>
 </feed>
