@@ -56,7 +56,15 @@ suggest). Heroku reduces many complex hosting-related concerns to simple
 commands and it's easy to get used to that, but it seems that not all of these
 commands receive the same polish and attention.
 
+Final caveat (hopefuly) is that Heroku will not necessarily use the same
+Postgres version: my production 9.3 database was cloned to a new instance
+running Postgres 9.5.
+
 ## Resolving the issue
+
+**NOTE:** Double and triple-check all commands before running them--the point of
+the article is that Heroku's simple tooling can make it equally simple to
+compromise your production deployment.
 
 ### The Situation
 
@@ -112,3 +120,33 @@ HEROKU_POSTGRESQL_ROSE_URL: postgres://user_a:password@ec2-host1.eu-west-1.compu
 DATABASE_URL:               postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2
 HEROKU_POSTGRESQL_ROSE_URL: postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2
 ```
+
+## Updating the staging database
+
+At some point you will want to refresh the data in staging. This can be achieved
+using the `pg:copy` command, though the first time through the output of the
+command will likely give you pause for thought:
+
+```
+% heroku pg:copy production-app-name::ROSE staging-app-name::ROSE --app staging-app-name
+
+ !    WARNING: Destructive Action
+ !    This command will remove all data from ROSE
+ !    Data from ROSE will then be transferred to ROSE
+ !    This command will affect the app: staging-app-name
+ !    To proceed, type "staging-app-name or re-run this command with --confirm staging-app-name
+
+> ^C !    Command cancelled.
+```
+
+If I could find clear guidance on how I should go about changing the colour name
+of my staging database I would do so, to avoid the unpleasant ambiguity in the
+destructive action warning.
+
+For now, the fact that I am explicitly targetting the staging app *should*
+protect the production environment, though as we have seen this protection can
+easily be bypassed by the `fork` command as it shares the `DATABASE_URL` between
+the apps.
+
+Allow the command to run and hopefully you should now have an up-to-date staging
+database.
