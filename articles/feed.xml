@@ -5,10 +5,127 @@
   <id>https://stefan.magnuson.co/articles</id>
   <link href="https://stefan.magnuson.co/articles"/>
   <link href="https://stefan.magnuson.co/articles/feed.xml" rel="self"/>
-  <updated>2016-03-06T00:00:00+00:00</updated>
+  <updated>2016-09-02T00:00:00+01:00</updated>
   <author>
     <name>Stefan Magnuson</name>
   </author>
+  <entry>
+    <title>Notes on the use of Staging Environments on Heroku</title>
+    <link rel="alternate" href="https://stefan.magnuson.co/articles/devops/notes-on-staging-environments-on-heroku/"/>
+    <id>https://stefan.magnuson.co/articles/devops/notes-on-staging-environments-on-heroku/</id>
+    <published>2016-09-02T00:00:00+01:00</published>
+    <updated>2016-09-02T12:49:08+01:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;The setup and use of a separate staging environment is covered (almost)
+adequately by &lt;a href="https://devcenter.heroku.com/articles/fork-app"&gt;Heroku&amp;rsquo;s documentation on the matter&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;And yet I must be missing something, as forking my app didn&amp;rsquo;t do what I
+expected.&lt;/p&gt;
+
+&lt;p&gt;In forking a running production app to create a staging clone environment what I
+expected to have afterwards was:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;A Heroku app called &lt;code&gt;appname-staging&lt;/code&gt;, running the same version of the
+application&lt;/li&gt;
+&lt;li&gt;A newly-created hobby-dev Postgres instance containing the production data&lt;/li&gt;
+&lt;li&gt;That the staging app should be targeting the new staging database, i.e.
+&lt;code&gt;DATABASE_URL&lt;/code&gt; for &lt;code&gt;appname-staging&lt;/code&gt; should be set to the URL of the
+newly-created database.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The staging app appeared to be working exactly as expected. There was a new
+database which contained a copy of the production database, the staging app was
+running the right version of the code at the appropriate URL, and it appeared to
+be a perfect clone of production.&lt;/p&gt;
+
+&lt;p&gt;Unbelievably (for me at least), the &lt;code&gt;DATABASE_URL&lt;/code&gt; of the new staging app was
+set to point to the production database, including credentials. Staging was
+masquerading as a perfect clone of production because it was in fact pointing to
+the production database.&lt;/p&gt;
+
+&lt;p&gt;Here is the relevant portion of the Heroku documentation:&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;It is recommended to make sure if you have an expected Heroku Postgres setup
+with your target app. Please run heroku pg:info and/or heroku config command
+to make sure that everything has copied as you expected. If the copied
+database is not being the primary database (DATABASE_URL), use heroku
+pg:promote as described by the Heroku Postgres documentation to make it a
+primary database.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;It does not inspire confidence that this important caveat is not highlighted
+more clearly, and the concepts involved not explained in more detail. In what
+case would we ever want to fork an app, and have it pointing at the live
+production database?&lt;/p&gt;
+
+&lt;p&gt;Another potentially important caveat, while we are &lt;em&gt;forking&lt;/em&gt; the app, the
+database will be &lt;em&gt;copied&lt;/em&gt;, i.e. the database will not be &lt;em&gt;forked&lt;/em&gt; using the
+provided &lt;em&gt;fork&lt;/em&gt; feature. This lack of clarity has likely tripped up enough
+people for them to warrant adding another warning to the documentation page.&lt;/p&gt;
+
+&lt;p&gt;I have not found these issues discussed much (or at all) online, so I can only
+assume that I am one of the few who has fallen foul of this. Still, if you are
+experimenting with staging environments on Heroku then I would recommend
+checking and double-checking the config of the new app (as they do indeed
+suggest). Heroku reduces many complex hosting-related concerns to simple
+commands and it&amp;rsquo;s easy to get used to that, but it seems that not all of these
+commands receive the same polish and attention.&lt;/p&gt;
+
+&lt;h2&gt;Resolving the issue&lt;/h2&gt;
+
+&lt;h3&gt;The Situation&lt;/h3&gt;
+
+&lt;p&gt;You have run Heroku&amp;rsquo;s &lt;code&gt;fork&lt;/code&gt; command and now have a clone of your production
+app, but its &lt;code&gt;DATABASE_URL&lt;/code&gt; is still pointing to that of production.&lt;/p&gt;
+
+&lt;p&gt;First, take a fresh backup of production before continuing:&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;heroku pg:backups capture -a production-app-name&lt;/code&gt;
+&lt;code&gt;curl `heroku pg:backups public-url -a production-app-name` -o `date +5Y5m5d`.pgbackup&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;With a backup safely stored, we look at the configuration of each application:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;% heroku config -a production-app-name | grep URL
+DATABASE_URL:               postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+HEROKU_POSTGRESQL_ROSE_URL: postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+% heroku config -a staging-app-name | grep URL
+DATABASE_URL:               postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+HEROKU_POSTGRESQL_ROSE_URL: postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Note that the staging app has a new &lt;code&gt;ROSE&lt;/code&gt; database URL, and yet its
+&lt;code&gt;DATABASE_URL&lt;/code&gt; is still pointing directly at production.&lt;/p&gt;
+
+&lt;p&gt;In the remaining configuration items, new credentials have been automatically
+set for New Relic, Papertrail and other add-ons, but for some reason not for the
+all-important &lt;code&gt;DATABASE-URL&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h3&gt;The Solution&lt;/h3&gt;
+
+&lt;p&gt;As per &lt;a href="https://devcenter.heroku.com/articles/heroku-postgresql#establish-primary-db"&gt;Heroku&amp;rsquo;s docs on the
+matter&lt;/a&gt;,
+we need to &lt;em&gt;promote&lt;/em&gt; the newly-created staging database to be the primary
+database for the app:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;% heroku pg:promote HEROKU_POSTGRESQL_ROSE_URL -a staging-app-name
+Ensuring an alternate alias for existing DATABASE... done, not needed
+Promoting postgresql-addon-id to DATABASE_URL on staging-app-name... done
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;We now confirm that the production configuration has not changed, and the
+staging configuration now has &lt;code&gt;DATABASE_URL&lt;/code&gt; pointing at the new staging
+database, and &lt;strong&gt;not&lt;/strong&gt; our production database:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;% heroku config -a production-app-name | grep URL
+DATABASE_URL:               postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+HEROKU_POSTGRESQL_ROSE_URL: postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+% heroku config -a staging-app-name | grep URL
+DATABASE_URL:               postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2
+HEROKU_POSTGRESQL_ROSE_URL: postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2
+&lt;/code&gt;&lt;/pre&gt;
+</content>
+  </entry>
   <entry>
     <title>Kinesis Freestyle 2 Keyboard Review</title>
     <link rel="alternate" href="https://stefan.magnuson.co/articles/programming/kinesis-freestyle-2-keyboard-review/"/>
@@ -844,202 +961,6 @@ sticking with the standard Rails testing methods will better serve that goal.&lt
 &lt;p&gt;&lt;img src="http://stefan.haflidason.com/assets/2014/08/Screen-Shot-2014-08-18-at-16.42.21.png" alt="Bootrap Rails Form Validation" width="491" height="444" class="aligncenter size-full wp-image-784" /&gt;&lt;/p&gt;
 
 &lt;p&gt;If you have any questions or suggestions for improvement you can &lt;a href="https://twitter.com/styrmis"&gt;drop me a line on Twitter&lt;/a&gt;.&lt;/p&gt;
-</content>
-  </entry>
-  <entry>
-    <title>Sending Emails Using Rails and Bootstrap</title>
-    <link rel="alternate" href="https://stefan.magnuson.co/articles/rails/sending-emails-using-rails-and-bootstrap/"/>
-    <id>https://stefan.magnuson.co/articles/rails/sending-emails-using-rails-and-bootstrap/</id>
-    <published>2014-04-21T00:00:00+01:00</published>
-    <updated>2015-10-10T21:31:53+01:00</updated>
-    <author>
-      <name>Article Author</name>
-    </author>
-    <content type="html">&lt;p&gt;If you&amp;rsquo;ve built your site&amp;rsquo;s look and feel using Bootstrap and you&amp;rsquo;re now looking to start sending emails with similar styling then as you are no doubt aware, email clients are generally extremely limited in their understanding of CSS in particular and so we&amp;rsquo;re going to have to do a bit of work.&lt;/p&gt;
-
-&lt;p&gt;The topic of email HTML and CSS rendering is a complex one with an increasing number of caveats as you try to support more email clients. Some common client sins include:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;Stripping out the &lt;code&gt;&amp;lt;head&amp;gt;&lt;/code&gt; tag completely.&lt;/li&gt;
-&lt;li&gt;Not loading any linked stylesheets; all CSS must be inline, e.g. &lt;code&gt;&amp;lt;div style=&amp;quot;color: #444444; text-align: center;&amp;quot;&amp;gt;&lt;/code&gt; etc.&lt;/li&gt;
-&lt;li&gt;Not understanding any positional CSS, instead requiring tables within tables for layout.&lt;/li&gt;
-&lt;li&gt;Generally behaving like a browser in the 90&amp;rsquo;s.&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;We&amp;rsquo;ll use &lt;code&gt;premailer&lt;/code&gt; to convert our linked CSS declarations into inline CSS and &lt;code&gt;letter_opener_web&lt;/code&gt; to make previewing changes a little easier, then we&amp;rsquo;ll try integrating some parts of Bootstrap in using &lt;code&gt;less&lt;/code&gt;.&lt;/p&gt;
-
-&lt;h2&gt;Letter Opener Web&lt;/h2&gt;
-
-&lt;p&gt;It would be good to have a way to send emails locally, not worry about accidentally sending to a real person (e.g. a user) and preview the results easily. The &lt;code&gt;letter_opener&lt;/code&gt; gem by Ryan Bates works well for this, but it would be nicer to be able to easily browse the emails within the app rather than only rely on them launching in a browser on each send. The &lt;code&gt;letter_opener_web&lt;/code&gt; gem extends &lt;code&gt;letter_opener&lt;/code&gt; with such an interface, so let&amp;rsquo;s install it.&lt;/p&gt;
-
-&lt;p&gt;Add to &lt;code&gt;Gemfile&lt;/code&gt;:&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="n"&gt;gem&lt;/span&gt; &lt;span class="s1"&gt;'letter_opener_web'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'~&amp;gt; 1.2.0'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:group&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="ss"&gt;:development&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Configure in &lt;code&gt;config/environments/development.rb&lt;/code&gt;:&lt;/p&gt;
-
-&lt;p&gt;If you want emails to open in your browser on send (using the &lt;code&gt;launchy&lt;/code&gt; gem) and be browsable via the web interface:&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;action_mailer&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;delivery_method&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="ss"&gt;:letter_opener&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;If you only want the emails to be visible in the web interface (I prefer this):&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;action_mailer&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;delivery_method&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="ss"&gt;:letter_opener_web&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Add to &lt;code&gt;config/routes.rb&lt;/code&gt;:&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="no"&gt;Rails&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;env&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;development?&lt;/span&gt;
-  &lt;span class="n"&gt;mount&lt;/span&gt; &lt;span class="no"&gt;LetterOpenerWeb&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="no"&gt;Engine&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;at: &lt;/span&gt;&lt;span class="s2"&gt;"/devel/emails"&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Now if you visit &lt;code&gt;/devel/emails&lt;/code&gt; you should see the web interface; send some emails and they should appear here:&lt;/p&gt;
-
-&lt;p&gt;&lt;img src="http://stefan.haflidason.com/assets/2014/04/Screen-Shot-2014-04-21-at-15.10.50.png" alt="Screen Shot 2014-04-21 at 15.10.50" width="782" height="290" class="aligncenter size-full wp-image-684" style="border: 1px solid #444;" /&gt;&lt;/p&gt;
-
-&lt;h2&gt;Premailer&lt;/h2&gt;
-
-&lt;h3&gt;Installation&lt;/h3&gt;
-
-&lt;p&gt;Add &lt;code&gt;nokogiri&lt;/code&gt; and &lt;code&gt;premailer-rails&lt;/code&gt; to your &lt;code&gt;Gemfile&lt;/code&gt;:&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="n"&gt;gem&lt;/span&gt; &lt;span class="s1"&gt;'nokogiri'&lt;/span&gt;
-&lt;span class="n"&gt;gem&lt;/span&gt; &lt;span class="s1"&gt;'premailer-rails'&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;(and run &lt;code&gt;bundle install&lt;/code&gt;)&lt;/p&gt;
-
-&lt;p&gt;Premailer will hook in to the email rendering process of &lt;code&gt;ActionMailer&lt;/code&gt; automatically.&lt;/p&gt;
-
-&lt;h2&gt;Testing it Out&lt;/h2&gt;
-
-&lt;p&gt;To test that it&amp;rsquo;s working as expected, we&amp;rsquo;ll just define a couple of simple classes in a new CSS file, &lt;code&gt;app/assets/stylesheets/emails.css.less&lt;/code&gt;:&lt;/p&gt;
-&lt;pre class="highlight css"&gt;&lt;code&gt;&lt;span class="nc"&gt;.red&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-  &lt;span class="nl"&gt;color&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="no"&gt;red&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;span class="nc"&gt;.bold&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-  &lt;span class="nl"&gt;font-weight&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="nb"&gt;bold&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="p"&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;And then in our email view template (&lt;code&gt;app/views/notifier/daily_summary.html.haml&lt;/code&gt;), we&amp;rsquo;ll link in the CSS file and make use of the classes:&lt;/p&gt;
-&lt;pre class="highlight haml"&gt;&lt;code&gt;&lt;span class="nn"&gt;!!!
-&lt;/span&gt;&lt;span class="nt"&gt;%html&lt;/span&gt;
-  &lt;span class="nt"&gt;%head&lt;/span&gt;
-    &lt;span class="nt"&gt;%meta&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="na"&gt;http-equiv=&lt;/span&gt;&lt;span class="s"&gt;"Content-Type"&lt;/span&gt; &lt;span class="na"&gt;content=&lt;/span&gt;&lt;span class="s"&gt;"text/html; charset=UTF-8"&lt;/span&gt;)
-    &lt;span class="p"&gt;=&lt;/span&gt;&lt;span class="n"&gt;stylesheet_link_tag&lt;/span&gt; &lt;span class="s1"&gt;'emails.css'&lt;/span&gt;
-  &lt;span class="nt"&gt;%body&lt;/span&gt;
-    &lt;span class="nt"&gt;%p&lt;/span&gt;&lt;span class="nc"&gt;.red.bold&lt;/span&gt; A test email
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;We send this email via the console:&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="n"&gt;pry&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;main&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="no"&gt;Notifier&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;daily_summary&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;deliver&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;And the resulting &lt;code&gt;&amp;lt;p&amp;gt;&lt;/code&gt; tag has the classes defined as expected, including the relevant declarations pulled in as inline styling:&lt;/p&gt;
-&lt;pre class="highlight html"&gt;&lt;code&gt;&lt;span class="nt"&gt;&amp;lt;p&lt;/span&gt; &lt;span class="na"&gt;class=&lt;/span&gt;&lt;span class="s"&gt;"red bold"&lt;/span&gt; &lt;span class="na"&gt;style=&lt;/span&gt;&lt;span class="s"&gt;"color: red; font-weight: bold"&lt;/span&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;A test email&lt;span class="nt"&gt;&amp;lt;/p&amp;gt;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Inspecting the email, we see that this is basically working, though it isn&amp;rsquo;t a proper test yet as we are using a modern browser and not an email client.&lt;/p&gt;
-
-&lt;h2&gt;Incorporating Bootstrap&lt;/h2&gt;
-
-&lt;p&gt;I&amp;rsquo;ll assume that you already have Bootstrap incorporated into your asset pipeline using the source less files. Using SCSS would work fine too; what we want to do is to import the parts of Bootstrap that would be useful for styling our emails and this could even be achieved using static CSS, though I wouldn&amp;rsquo;t recommend it.&lt;/p&gt;
-
-&lt;p&gt;We start by importing some Bootstrap less files into &lt;code&gt;emails.css.less&lt;/code&gt;:&lt;/p&gt;
-&lt;pre class="highlight css"&gt;&lt;code&gt;&lt;span class="o"&gt;//&lt;/span&gt; &lt;span class="nt"&gt;Core&lt;/span&gt; &lt;span class="nt"&gt;variables&lt;/span&gt; &lt;span class="nt"&gt;and&lt;/span&gt; &lt;span class="nt"&gt;mixins&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/variables.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/mixins.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;span class="o"&gt;//&lt;/span&gt; &lt;span class="nt"&gt;Theme&lt;/span&gt; &lt;span class="nt"&gt;variables&lt;/span&gt; &lt;span class="nt"&gt;and&lt;/span&gt; &lt;span class="nt"&gt;mixins&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"theme/mixins.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"theme/variables.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;span class="o"&gt;//&lt;/span&gt; &lt;span class="nt"&gt;Reset&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/normalize.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;span class="o"&gt;//&lt;/span&gt; &lt;span class="nt"&gt;Core&lt;/span&gt; &lt;span class="nt"&gt;CSS&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/scaffolding.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/type.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/code.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/grid.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/tables.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/forms.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/buttons.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;span class="o"&gt;//&lt;/span&gt; &lt;span class="nt"&gt;Components&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/labels.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/badges.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;@import&lt;/span&gt; &lt;span class="s1"&gt;"twitter/bootstrap/panels.less"&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;We&amp;rsquo;ve imported the foundational files and a few components; at this stage it isn&amp;rsquo;t clear what components are going to work with this setup, in email clients or otherwise.&lt;/p&gt;
-
-&lt;p&gt;Then we extend our email template to make use of some Bootstrap classes:&lt;/p&gt;
-&lt;pre class="highlight haml"&gt;&lt;code&gt;&lt;span class="nn"&gt;!!!
-&lt;/span&gt;&lt;span class="nt"&gt;%html&lt;/span&gt;
-  &lt;span class="nt"&gt;%head&lt;/span&gt;
-    &lt;span class="nt"&gt;%meta&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="na"&gt;http-equiv=&lt;/span&gt;&lt;span class="s"&gt;"Content-Type"&lt;/span&gt; &lt;span class="na"&gt;content=&lt;/span&gt;&lt;span class="s"&gt;"text/html; charset=UTF-8"&lt;/span&gt;)
-    &lt;span class="p"&gt;=&lt;/span&gt;&lt;span class="n"&gt;stylesheet_link_tag&lt;/span&gt; &lt;span class="s1"&gt;'emails.css'&lt;/span&gt;
-  &lt;span class="nt"&gt;%body&lt;/span&gt;
-    &lt;span class="nt"&gt;%h2&lt;/span&gt; Tables
-
-    &lt;span class="nt"&gt;%table&lt;/span&gt;&lt;span class="nc"&gt;.table&lt;/span&gt;
-      &lt;span class="nt"&gt;%thead&lt;/span&gt;
-        &lt;span class="nt"&gt;%tr&lt;/span&gt;
-          &lt;span class="nt"&gt;%th&lt;/span&gt; Column 1
-          &lt;span class="nt"&gt;%th&lt;/span&gt; Column 2
-      &lt;span class="nt"&gt;%tbody&lt;/span&gt;
-        &lt;span class="nt"&gt;%tr&lt;/span&gt;
-          &lt;span class="nt"&gt;%td&lt;/span&gt; 1 / 1
-          &lt;span class="nt"&gt;%td&lt;/span&gt; 1 / 2
-        &lt;span class="nt"&gt;%tr&lt;/span&gt;
-          &lt;span class="nt"&gt;%td&lt;/span&gt; 2 / 1
-          &lt;span class="nt"&gt;%td&lt;/span&gt; 2 / 2
-
-    &lt;span class="nt"&gt;%h2&lt;/span&gt; Links
-
-    &lt;span class="nt"&gt;%a&lt;/span&gt;&lt;span class="nc"&gt;.btn.btn-primary&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="na"&gt;href=&lt;/span&gt;&lt;span class="s"&gt;"#"&lt;/span&gt;)
-      Link Styled as Button
-
-    &lt;span class="nt"&gt;%br&lt;/span&gt;
-    &lt;span class="nt"&gt;%br&lt;/span&gt;
-
-    &lt;span class="nt"&gt;%a&lt;/span&gt;
-      Link with badge
-      &lt;span class="nt"&gt;%span&lt;/span&gt;&lt;span class="nc"&gt;.badge&lt;/span&gt; 42
-
-    &lt;span class="nt"&gt;%br&lt;/span&gt;
-    &lt;span class="nt"&gt;%br&lt;/span&gt;
-
-    &lt;span class="nt"&gt;%h2&lt;/span&gt; Panels
-
-    &lt;span class="nc"&gt;.panel.panel-primary&lt;/span&gt;
-      &lt;span class="nc"&gt;.panel-heading&lt;/span&gt;
-        Panel Heading
-      &lt;span class="nc"&gt;.panel-body&lt;/span&gt;
-        Panel Body
-
-        &lt;span class="nc"&gt;.label.label-primary&lt;/span&gt;
-          Primary Label
-
-        &lt;span class="nc"&gt;.label.label-warning&lt;/span&gt;
-          Warning Label
-
-        &lt;span class="nc"&gt;.label.label-danger&lt;/span&gt;
-          Danger Label
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2&gt;Results&lt;/h2&gt;
-
-&lt;p&gt;&lt;img src="http://stefan.haflidason.com/assets/2014/04/Screen-Shot-2014-04-21-at-16.32.33.png" alt="Screen Shot 2014-04-21 at 16.32.33" width="900" height="640" class="aligncenter size-full wp-image-694" /&gt;&lt;/p&gt;
-
-&lt;p&gt;Some components simply aren&amp;rsquo;t going to work at all, so I&amp;rsquo;m expecting that the main benefit will be access to variables and mixins. This will help reduce code duplication and it won&amp;rsquo;t add quite as much weight as including the rest of the framework, so overall I would recommend getting as much mileage from simple HTML/CSS and the variables/mixins before spending too much time trying to get components to render properly.&lt;/p&gt;
-
-&lt;p&gt;Trying the resulting HTML in various email clients (via &lt;a href="https://litmus.com/pub/d831ecc"&gt;Litmus&lt;/a&gt;) results in reasonable results for a first attempt; some clients are nearly there, though some are quite broken. With tweaking this may be viable, though the recommendation to not spend too much time on the components still stands.&lt;/p&gt;
-
-&lt;p&gt;&lt;a href="https://litmus.com/pub/d831ecc" target="_blank"&gt;&lt;img src="http://stefan.haflidason.com/assets/2014/04/Screen-Shot-2014-04-21-at-16.49.37.png" alt="Screen Shot 2014-04-21 at 16.49.37" width="939" height="448" class="aligncenter size-full wp-image-695" /&gt;&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;In order to get going quickly I&amp;rsquo;ll be starting with one of the battle-tested templates that &lt;a href="https://github.com/mailchimp/email-blueprints"&gt;Mailchimp has open sourced&lt;/a&gt;. From there it will simply be a case of carefully linking up the Bootstrap style variables (e.g. colours) with the provided HTML. As long as no drastic changes are introduced, and the automatic inlining done by Premailer doesn&amp;rsquo;t break anything, then we should get widely-compatible email templates for our Rails app with a relatively small time investment.&lt;/p&gt;
 </content>
   </entry>
 </feed>
