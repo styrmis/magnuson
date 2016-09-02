@@ -55,3 +55,59 @@ checking and double-checking the config of the new app (as they do indeed
 suggest). Heroku reduces many complex hosting-related concerns to simple
 commands and it's easy to get used to that, but it seems that not all of these
 commands receive the same polish and attention.
+
+## Resolving the issue
+
+### The Situation
+
+You have run Heroku's `fork` command and now have a clone of your production
+app, but its `DATABASE_URL` is still pointing to that of production.
+
+First, take a fresh backup of production before continuing:
+
+`heroku pg:backups capture -a production-app-name`
+``curl `heroku pg:backups public-url -a production-app-name` -o `date +5Y5m5d`.pgbackup``
+
+With a backup safely stored, we look at the configuration of each application:
+
+```
+% heroku config -a production-app-name | grep URL
+DATABASE_URL:               postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+HEROKU_POSTGRESQL_ROSE_URL: postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+% heroku config -a staging-app-name | grep URL
+DATABASE_URL:               postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+HEROKU_POSTGRESQL_ROSE_URL: postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2
+```
+
+Note that the staging app has a new `ROSE` database URL, and yet its
+`DATABASE_URL` is still pointing directly at production.
+
+In the remaining configuration items, new credentials have been automatically
+set for New Relic, Papertrail and other add-ons, but for some reason not for the
+all-important `DATABASE-URL`.
+
+### The Solution
+
+As per [Heroku's docs on the
+matter](https://devcenter.heroku.com/articles/heroku-postgresql#establish-primary-db),
+we need to *promote* the newly-created staging database to be the primary
+database for the app:
+
+```
+% heroku pg:promote HEROKU_POSTGRESQL_ROSE_URL -a staging-app-name
+Ensuring an alternate alias for existing DATABASE... done, not needed
+Promoting postgresql-addon-id to DATABASE_URL on staging-app-name... done
+```
+
+We now confirm that the production configuration has not changed, and the
+staging configuration now has `DATABASE_URL` pointing at the new staging
+database, and **not** our production database:
+
+```
+% heroku config -a production-app-name | grep URL
+DATABASE_URL:               postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+HEROKU_POSTGRESQL_ROSE_URL: postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1
+% heroku config -a staging-app-name | grep URL
+DATABASE_URL:               postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2
+HEROKU_POSTGRESQL_ROSE_URL: postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2
+```
