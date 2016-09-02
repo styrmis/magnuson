@@ -14,7 +14,7 @@
     <link rel="alternate" href="https://stefan.magnuson.co/articles/devops/notes-on-staging-environments-on-heroku/"/>
     <id>https://stefan.magnuson.co/articles/devops/notes-on-staging-environments-on-heroku/</id>
     <published>2016-09-02T00:00:00+01:00</published>
-    <updated>2016-09-02T12:49:08+01:00</updated>
+    <updated>2016-09-02T12:52:05+01:00</updated>
     <author>
       <name>Article Author</name>
     </author>
@@ -84,8 +84,9 @@ app, but its &lt;code&gt;DATABASE_URL&lt;/code&gt; is still pointing to that of 
 
 &lt;p&gt;First, take a fresh backup of production before continuing:&lt;/p&gt;
 
-&lt;p&gt;&lt;code&gt;heroku pg:backups capture -a production-app-name&lt;/code&gt;
-&lt;code&gt;curl `heroku pg:backups public-url -a production-app-name` -o `date +5Y5m5d`.pgbackup&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;% heroku pg:backups capture -a production-app-name&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;% curl `heroku pg:backups public-url -a production-app-name` -o `date +5Y5m5d`.pgbackup&lt;/code&gt;&lt;/p&gt;
 
 &lt;p&gt;With a backup safely stored, we look at the configuration of each application:&lt;/p&gt;
 &lt;pre class="highlight plaintext"&gt;&lt;code&gt;% heroku config -a production-app-name | grep URL

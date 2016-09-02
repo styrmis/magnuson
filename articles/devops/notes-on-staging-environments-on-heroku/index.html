@@ -98,8 +98,9 @@
       
       <p>First, take a fresh backup of production before continuing:</p>
       
-      <p><code>heroku pg:backups capture -a production-app-name</code>
-      <code>curl `heroku pg:backups public-url -a production-app-name` -o `date +5Y5m5d`.pgbackup</code></p>
+      <p><code>% heroku pg:backups capture -a production-app-name</code></p>
+      
+      <p><code>% curl `heroku pg:backups public-url -a production-app-name` -o `date +5Y5m5d`.pgbackup</code></p>
       
       <p>With a backup safely stored, we look at the configuration of each application:</p>
       <pre class="highlight plaintext"><code>% heroku config -a production-app-name | grep URL&#x000A;DATABASE_URL:               postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1&#x000A;HEROKU_POSTGRESQL_ROSE_URL: postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1&#x000A;% heroku config -a staging-app-name | grep URL&#x000A;DATABASE_URL:               postgres://user_a:password@ec2-host1.eu-west-1.compute.amazonaws.com:5432/db_identifier1&#x000A;HEROKU_POSTGRESQL_ROSE_URL: postgres://user_b:password@ec2-host2.eu-west-1.compute.amazonaws.com:5432/db_identifier2&#x000A;</code></pre>
