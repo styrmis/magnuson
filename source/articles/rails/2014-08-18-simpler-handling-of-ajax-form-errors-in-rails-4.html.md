@@ -175,7 +175,7 @@ $.fn.clear_form_fields = () ->
 
 With the above we now have a fairly general implementation of remote forms for our app where to fully handle validation we only need to call one helper method.
 
-In doing so we have left the controller largely untouched, and thanks to a custom form helper and Bootstrap we need need do very little to have all controls appear as they should when we need to show an error.
+In doing so we have left the controller largely untouched, and thanks to a custom form helper and Bootstrap we need do very little to have all controls appear as they should when we need to show an error.
 
 Here's what the result looks like when we click submit on an empty form, thus triggering validation errors:
 
